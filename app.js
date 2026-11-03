@@ -72,6 +72,7 @@ function khanRecommendation(ws){const t=data.tests||{}; const has=t.combo!==''&&
   if(top&&top.count>=3)return {title:'主课后做一轮练习',course:top.khan,card:'Main → Practice 1',text:`${top.name}错误较集中。先 Main（主课），能口头说出规律并完成陌生词读写后，再做 Practice 1（第一轮练习）。`};
   return {title:'规则课短学 + 纸笔主练',course:'1-Syllable & 2-Syllable Words',card:'Main',text:'当前没有明显规则性薄弱项，建议每天只做1张主课卡，其余时间用于纸笔错词间隔复习。'};
 }
+function currentPlan(){const last=data.records.at(-1);const target=last?plus(last.date,1):iso(today);const computed=buildPlan(target);return {target,list:(last?.nextPlan?.length?last.nextPlan:computed.list)};}
 function autoChecks(ws){
   const pick=ws.slice(0,2); if(!pick.length)return ['本周先录入至少一次错词；系统会按错误规律自动出检验题。','不录入错误时，也请周末从已掌握词随机抽10个，避免只记住近期词。'];
   const q=[];pick.forEach(w=>{
@@ -83,7 +84,7 @@ function autoChecks(ws){
     if(w.id==='irregular')q.push('视觉词形：给 muscle、clothes、sausage 看3秒后遮住写；当天、次日、第3天、第7天连续都对才降级。');
   }); return q;
 }
-function render(){const last=data.records.at(-1); const target=last?plus(last.date,1):iso(today); const computed=buildPlan(target); const list=(last?.nextPlan?.length?last.nextPlan:computed.list); const ws=weakness(); const rec=khanRecommendation(ws);
+function render(){const {target,list}=currentPlan(); const last=data.records.at(-1); const ws=weakness(); const rec=khanRecommendation(ws);
   if(last||Object.values(data.tests||{}).some(x=>x!=='')){['plan','analysis','khanPlan','checkPlan','weekend'].forEach(id=>$(id).classList.remove('hidden'));}
   $('nextDate').textContent='（'+target+'）';
   const words=list.length?list:[];$('dictationList').innerHTML=words.map((x,i)=>`<div class="word"><b>${i+1}.</b> ${x.word}<span class="tag">${x.tag}</span></div>`).join('')||'<p>先保存一次“今天录入”，系统才会生成下一次清单。</p>';
@@ -108,6 +109,14 @@ function saveRecord(){
   save();render();document.getElementById('plan').scrollIntoView({behavior:'smooth'});
 }
 function saveTest(){data.tests={combo:$('comboScore').value,decode:$('decodeScore').value,magic:$('magicScore').value,syllable:$('syllableScore').value};save();render();}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function exportWorksheet(){
+  const {target,list}=currentPlan();
+  if(!list.length){alert('请先保存一次“今天录入”，再导出作业。');return;}
+  const rows=list.map((x,i)=>`<tr><td>${i+1}</td><td>&nbsp;</td><td></td><td>${escapeHtml(x.word)}</td><td>${escapeHtml(x.tag||'')}</td></tr>`).join('');
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>英语默写作业</title><style>body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#111;margin:24px}h1{text-align:center;font-size:22px}p{font-size:13px}.meta{display:flex;justify-content:space-between;border-bottom:1px solid #333;padding-bottom:8px}table{border-collapse:collapse;width:100%;font-size:14px;margin-top:14px}th,td{border:1px solid #333;padding:7px;height:24px}th{background:#eaf4f0}.rule{background:#f7fbf9;padding:10px;margin-top:14px;line-height:1.7}@page{size:A4;margin:16mm}</style></head><body><h1>英语默写与拼读巩固作业</h1><div class="meta"><span>日期：${target}</span><span>姓名：__________________</span><span>得分：________</span></div><p><b>规则：</b>家长按中文或英文读词；孩子在“孩子书写”栏写出单词。写完后圈出词中的字母组合/词块，并在“错因”栏写：元音、组合、词尾、音节、空格或视觉词形。</p><table><thead><tr><th style="width:7%">序号</th><th style="width:35%">孩子书写</th><th style="width:24%">错因/订正</th><th style="width:22%">家长答案</th><th style="width:12%">来源</th></tr></thead><tbody>${rows}</tbody></table><div class="rule"><b>今日拼读自检：</b>从本页任选3个词，孩子必须能说出其中的字母组合或词块和读音；再由家长给1个同规律陌生词，能读写才算真正掌握。</div></body></html>`;
+  const blob=new Blob(['\ufeff',html],{type:'application/msword;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`英语默写作业_${target}.doc`;a.click();URL.revokeObjectURL(a.href);
+}
 function fill(){
   const now=iso(today); $('studyDate').value=now;
   const existing=data.records.find(r=>r.date===now), last=data.records.at(-1);
@@ -117,6 +126,7 @@ function fill(){
   const t=data.tests||{};$('comboScore').value=t.combo||'';$('decodeScore').value=t.decode||'';$('magicScore').value=t.magic||'';$('syllableScore').value=t.syllable||'';render();
 }
 $('saveAndPlan').onclick=saveRecord;$('saveTest').onclick=saveTest;
+$('exportWorksheet').onclick=exportWorksheet;
 $('markAllCorrect').onclick=()=>{alert('本次“全对”只说明这批词本次正确。请仍保留它们在第3天、第7天的安排，并在周末做陌生词规则检验。')};
 $('exportData').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='英语拼读巩固备份_'+iso(today)+'.json';a.click();URL.revokeObjectURL(a.href)};
 $('importData').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);save();fill();alert('导入成功。')}catch{alert('这不是正确的备份文件。')}};r.readAsText(f)};

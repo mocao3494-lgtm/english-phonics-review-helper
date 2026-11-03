@@ -58,7 +58,7 @@
       <h2>下一次默写清单 <span id="nextDate"></span></h2>
       <p id="planNote" class="help"></p>
       <div id="dictationList" class="dictation-list"></div>
-      <div class="actions"><button class="secondary" onclick="window.print()">打印本次作业</button><button class="secondary" id="markAllCorrect">全对也按曲线复习</button></div>
+      <div class="actions"><button class="secondary" id="exportWorksheet">导出 WPS 默写作业（.doc）</button><button class="secondary" onclick="window.print()">打印/保存 PDF</button><button class="secondary" id="markAllCorrect">全对也按曲线复习</button></div>
     </section>
 
     <section class="card hidden" id="analysis">
@@ -90,6 +90,7 @@
 
     <section class="card tools">
       <h2>数据与使用说明</h2>
+      <details><summary>怎么导出到鸿蒙手机/WPS</summary><ol><li>点“<b>导出 WPS 默写作业（.doc）</b>”。这会下载一份可用 WPS 打开的 Word 格式作业，不是数据备份。</li><li>在鸿蒙手机的下载通知或“文件管理”中找到该 <b>.doc</b> 文件，点“用 WPS Office 打开”。随后可编辑、打印或在 WPS 中另存为 PDF。</li><li>若想直接得到 PDF，点“<b>打印/保存 PDF</b>”，在手机系统打印页选择“保存为 PDF”或“分享至 WPS”。</li><li>“<b>导出备份</b>”是 <b>.json</b> 数据文件，只用于以后导入本工具恢复记录，不用 WPS 打开。</li></ol></details>
       <details><summary>软件里具体点哪里</summary><ol><li>打开 Khan Academy Kids 教师端，点 <b>Reading</b>（阅读）。</li><li>右上角选择 <b>1st Grade</b>（一年级）。</li><li>按本页面显示的课程标题找到卡片，首次只点 <b>Main</b>（主课）。</li><li>勾选孩子，再点 <b>Save</b>（保存/布置）。</li><li>完成后点 <b>Students</b> → 点孩子 → <b>Assignments</b> 看作业，或 <b>All Progress</b> 看全部记录。</li></ol></details>
       <details><summary>怎么区分会写单词和会拼读规则</summary><p>会写旧词只说明孩子记住了这个词；只有“能说出组合读音、能读写没背过但规律相同的词、能区分 hop/hope 这类对比词”才算真正掌握规则。本页面的“本周规则检验”专门记录这三件事。</p></details>
       <div class="actions"><button class="secondary" id="exportData">导出备份</button><label class="upload">导入备份<input id="importData" type="file" accept="application/json" /></label><button class="danger" id="resetData">清空全部数据</button></div>
