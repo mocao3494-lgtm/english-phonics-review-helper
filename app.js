@@ -9,7 +9,8 @@ let data=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(LEGACY_KEY)|
 const PATTERNS=[
   {id:'multisyllable',name:'多音节拆分',match:w=>['important','television','exercise','difficult','holiday','prepare','remember','practise','photo album','hockey','tidy'].some(x=>w.includes(x)),khan:'1-Syllable & 2-Syllable Words',why:'先拍音节，再用竖线把词块分开；这类错误说明完整词形还没稳定。',test:'给 prepare、holiday、difficult、remember 和一个新词 volcano，要求先拍音节、画竖线、再写。4/5 才通过。'},
   {id:'vowels',name:'长元音与元音组合',match:w=>/(seek|between|bounce|point|phone|close|bone|boots|trousers|painting|holiday|touch|sausage)/.test(w),khan:'Final -e & Long Vowel Teams',why:'重点辨认 ee、oo、ou、oi、ai/ay 和 Magic e。',test:'写 ee、oo、ou、oi、ai、a_e 等10个组合，让孩子说读音并举词；再读写没背过的同规律词。8/10 才通过。'},
-  {id:'blends',name:'辅音连缀与特殊字母',match:w=>/(stretch|trousers|shirt|skirt|shorts|phone|phrase|photo|hockey|touch)/.test(w),khan:'Consonant Blends',why:'重点是 sh、sk、str、tr、ph、tch；听到声音后要能定位到字母。',test:'给 sh/ch/th/ph、sk/str/tr/tch 共10项，让孩子说出读音并写一个例词；8/10 才通过。'},
+  {id:'blends',name:'辅音连缀与字母组合',match:w=>/(stretch|trousers|shirt|skirt|shorts)/.test(w),khan:'Consonant Blends',why:'重点是 sk、str、tr：每个辅音都要听见、写全；stretch 还要留意末尾 tch。',test:'给 sk、str、tr、tch 共8项，让孩子圈出词块，再写 shirt、skirt、stretch；7/8 才通过。'},
+  {id:'ph',name:'ph 拼写规则（/f/）',match:w=>/(phone|phrase|photo)/.test(w),khan:'纸笔规则卡（可汗截图中没有专门 ph 课程）',why:'ph 常读 /f/，如 phone、photo、phrase；它不是辅音连缀，不能按拼音或普通 f 随意写。',test:'读 phone、photo、phrase，圈出 ph；再遮住拼写3个词。当天、次日、第3天都对才稳定。'},
   {id:'phrases',name:'短语空格与复合词',match:w=>/(in front of|come from|pick up|listen to|bus stop|sun cream|photo album|postcard|armchair|sunglasses)/.test(w),khan:'1-Syllable & 2-Syllable Words',why:'短语要看空格，复合词要看两个词块。',test:'各抽5个短语和5个复合词，只给中文提示。短语看空格、复合词看词块，9/10 才通过。'},
   {id:'endings',name:'词尾变化',match:w=>/(shorts|boots|sunglasses|painting)/.test(w),khan:'Inflectional Endings',why:'先写词根，再补 s、es 或 ing，避免漏词尾。',test:'用 boot/short/paint 给3个新变化形式；能正确写 3/3 才通过。'},
   {id:'irregular',name:'不规则视觉拼写',match:w=>/(muscle|clothes|sausage|trousers)/.test(w),khan:'Sight Words',why:'这类词不能只靠拼读，需要看词形、分块和间隔复现。',test:'看词3秒后遮住书写；当天、次日、第3天和第7天都正确，才可移出错题池。'}
@@ -69,6 +70,7 @@ function weakness(){
 }
 function khanRecommendation(ws){const t=data.tests||{}; const has=t.combo!==''&&t.combo!==undefined; const ruleFail=(has&&+t.combo<8)||(+t.decode<8&&t.decode!==undefined&&t.decode!=='')||(+t.magic<3&&t.magic!==undefined&&t.magic!=='')||(+t.syllable<4&&t.syllable!==undefined&&t.syllable!=='');
   const top=ws[0]; if(ruleFail){return {title:'先补规则，不进入 Practice',course:top?.khan||'Final -e & Long Vowel Teams',card:'Basic 或 Main',text:'规则检验未达标，说明“会写见过的词”不等于掌握规律。先完成对应 Basic（基础支持）或 Main（主课），然后做陌生词读写，不要先刷 Practice。'}}
+  if(top?.id==='ph')return {title:'先做 ph 纸笔规则卡',course:'纸笔规则卡',card:'不需要在可汗里搜索 ph 专题',text:'您截图中的可汗课程没有明确的 ph 专题。先用 phone / photo / phrase 做“看 ph—读 /f/—遮住书写”；可汗当天改做 Nonsense Words 或已安排的主课即可。'};
   if(top&&top.count>=3)return {title:'主课后做一轮练习',course:top.khan,card:'Main → Practice 1',text:`${top.name}错误较集中。先 Main（主课），能口头说出规律并完成陌生词读写后，再做 Practice 1（第一轮练习）。`};
   return {title:'规则课短学 + 纸笔主练',course:'1-Syllable & 2-Syllable Words',card:'Main',text:'当前没有明显规则性薄弱项，建议每天只做1张主课卡，其余时间用于纸笔错词间隔复习。'};
 }
@@ -77,7 +79,8 @@ function autoChecks(ws){
   const pick=ws.slice(0,2); if(!pick.length)return ['本周先录入至少一次错词；系统会按错误规律自动出检验题。','不录入错误时，也请周末从已掌握词随机抽10个，避免只记住近期词。'];
   const q=[];pick.forEach(w=>{
     if(w.id==='vowels')q.push('长元音/元音组合：看 ee、oo、ou、oi、a_e 五个组合，孩子要说常见读音，并读写其中2个未见过的规律词；正确4项以上。');
-    if(w.id==='blends')q.push('辅音连缀与组合：读 sh、ch、th、sk、str、tr、ph、tch；让孩子圈出每个词中的组合，再写 shirt、skirt、stretch 各1次。');
+    if(w.id==='blends')q.push('辅音连缀与组合：读 sk、str、tr、tch；让孩子圈出每个词中的组合，再写 shirt、skirt、stretch 各1次。');
+    if(w.id==='ph')q.push('ph 规则：读 phone、photo、phrase；圈出 ph 并说“ph 在这里读 /f/”，然后遮住拼写三个词。');
     if(w.id==='multisyllable')q.push('多音节：听写 prepare、holiday、difficult，再给新词 picnic；每个词先拍音节、画竖线后书写。4个中至少3个完整正确。');
     if(w.id==='phrases')q.push('短语/复合词：不看答案写 in front of、pick up、bus stop、postcard；要求短语空格和复合词词块都正确。4个全对。');
     if(w.id==='endings')q.push('词尾：由 boot、short、paint 写 boots、shorts、painting，并让孩子圈出词尾。3个全对。');
