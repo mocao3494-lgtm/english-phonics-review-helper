@@ -15,14 +15,30 @@ const PATTERNS=[
   {id:'irregular',name:'不规则视觉拼写',match:w=>/(muscle|clothes|sausage|trousers)/.test(w),khan:'Sight Words',why:'这类词不能只靠拼读，需要看词形、分块和间隔复现。',test:'看词3秒后遮住书写；当天、次日、第3天和第7天都正确，才可移出错题池。'}
 ];
 const MASTERY=['hall','touch','bone','rhino','floor','armchair','hat','diet','close','phrase','hockey'];
+// 已有教材中近期出现过的词，用于最初几天凑足40题；之后会逐步被真实历史记录取代。
+const BASE_REVIEW=['dress','shirt','skirt','shorts','boots','prepare','holiday','important','exercise','television','phone','close','bone','seek','between','stretch','trousers','bounce','point','touch','in front of','come from','pick up','listen to','bus stop','sun cream','sunglasses','postcard','armchair','painting','muscle','clothes','sausage','difficult','remember','practise','phrase','photo album','tidy','hockey'];
 const SOUNDS=[
 ['Consonant Digraphs','ch','/tʃ/','chair, stretch','两个字母合成一个音；可汗页面会分别出现 Sounds: ch。'],['Consonant Digraphs','sh','/ʃ/','ship, shirt, shorts','两个字母合成“嘘”音；可汗页面会分别出现 Sounds: sh。'],['Consonant Digraphs','th','/θ/ 或 /ð/','thin / this','舌尖轻碰牙齿；同一组合有清浊两种常见音。'],['Consonant Digraphs','wh','/w/','what, when','常见读 /w/；who 是例外，单独记。'],['Consonant Blends','sk, st, sp, str, tr','各辅音都要发出来','skirt, stop, spring, stretch, trousers','不是一个新音，是几个辅音连续发；可汗示例含 st、sp、sk、sm、bl 等。'],['Final -e & Long Vowel Teams','a_e / i_e / o_e','/eɪ/ /aɪ/ /oʊ/','name / kite / bone','末尾 e 通常不发音，让前面的元音读字母音；可汗把它称为 The Magic E。'],['Final -e & Long Vowel Teams','ee / ea','/iː/','seek / leaf','长 e；ea 在少数词中例外，例如 bread。'],['Final -e & Long Vowel Teams','ai / ay','/eɪ/','rain / day','ai 常在词中，ay 常在词尾。'],['Final -e & Long Vowel Teams','oo','/uː/ 或 /ʊ/','boots / book','同一组合有两种常见音，必须连例词一起记。'],['Final -e & Long Vowel Teams','ou / oi','/aʊ/ 或 /ʌ/；/ɔɪ/','bounce / touch；point','ou 有多种音；oi 常读 /ɔɪ/。'],['r-Controlled Vowels','ar / or / er ir ur','/ɑr/ /ɔr/ /ɜr/','car / short / shirt','r 会改变前面元音；可汗课程标题直接列出 ar or er ir ur。'],['Inflectional Endings','-ing / -ed / -s -es','/ɪŋ/；/t/ /d/ /ɪd/；/s/ /z/ /ɪz/','painting / jumped / boots','先写词根再加词尾；词尾发音由前一个音决定。']
 ];
 
 function save(){localStorage.setItem(KEY,JSON.stringify(data));}
 function parseLines(text){return text.split(/[\n,，]/).map(x=>x.split('|')[0].trim()).filter(Boolean).map(norm)}
-function entryWords(record){return [...new Set([...(record.newWords||[]),...(record.errors||[])])];}
+function entryWords(record){return [...new Set([...(record.reviewedWords||[]),...(record.newWords||[]),...(record.errors||[])])];}
 function allErrorCounts(){const c={};data.records.forEach(r=>r.errors.forEach(w=>c[w]=(c[w]||0)+1));return c}
+const CURVE=[1,3,7,14,30];
+function rebuildWordState(){
+  const state={};
+  [...data.records].sort((a,b)=>a.date.localeCompare(b.date)).forEach(r=>{
+    const errors=new Set((r.errors||[]).map(norm));
+    const words=[...new Set([...(r.reviewedWords||r.newWords||[]),...(r.errors||[])].map(norm))];
+    words.forEach(w=>{
+      const old=state[w]||{stage:0,errors:0,lastReviewed:''};
+      if(errors.has(w)){state[w]={stage:0,errors:old.errors+1,lastReviewed:r.date,nextDue:plus(r.date,1)};}
+      else {const stage=Math.min(old.stage+1,CURVE.length);state[w]={stage,errors:old.errors,lastReviewed:r.date,nextDue:plus(r.date,CURVE[stage-1])};}
+    });
+  });
+  data.wordState=state;return state;
+}
 function dueWords(targetDate){
   let groups={d1:[],d3:[],d7:[],d14:[],d30:[]};
   const intervals={d1:1,d3:3,d7:7,d14:14,d30:30};
@@ -30,17 +46,18 @@ function dueWords(targetDate){
   Object.keys(groups).forEach(k=>groups[k]=[...new Set(groups[k])]);return groups
 }
 function ruleOf(w){return PATTERNS.filter(p=>p.match(w)).map(p=>p.id)}
-function buildPlan(targetDate){const due=dueWords(targetDate), counts=allErrorCounts(); const newest=data.records.at(-1)||{newWords:[],errors:[],nextNewWords:[]};
+function buildPlan(targetDate){const due=dueWords(targetDate), counts=allErrorCounts(), state=rebuildWordState(); const newest=data.records.at(-1)||{newWords:[],errors:[],nextNewWords:[]};
   let list=[], added=new Set(); const add=(word,tag)=>{word=norm(word);if(word&&!added.has(word)&&list.length<40){list.push({word,tag});added.add(word)}};
   // The next day’s fixed five new words always come first; parent enters them when saving today.
   (newest.nextNewWords||[]).slice(0,5).forEach(w=>add(w,'明日新词'));
-  due.d1.forEach(w=>add(w,'次日巩固')); due.d3.forEach(w=>add(w,'第3天巩固')); due.d7.forEach(w=>add(w,'第7天巩固')); due.d14.forEach(w=>add(w,'第14天巩固')); due.d30.forEach(w=>add(w,'第30天巩固'));
+  // 到期未复习的词会一直保留在队列，直到实际默写一次；不会因为当天超过40题而丢失。
+  Object.entries(state).filter(([,s])=>s.nextDue<=targetDate).sort((a,b)=>a[1].nextDue.localeCompare(b[1].nextDue)||b[1].errors-a[1].errors).forEach(([w,s])=>add(w,s.errors?'错词优先':'间隔复习'));
   Object.entries(counts).filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]).forEach(([w])=>add(w,'高频错词'));
-  const recent=[...newest.errors,...newest.newWords]; recent.forEach(w=>add(w,'近期复核'));
   // Add rule-linked words that have appeared before, then mastered check words.
   const all=[...new Set(data.records.flatMap(entryWords))]; all.filter(w=>ruleOf(w).length).forEach(w=>add(w,'规律词'));
   MASTERY.forEach(w=>add(w,'已掌握抽查'));
-  // If no database yet, keep empty rather than inventing a 40-word set.
+  // 初始词库只用于把早期作业补足40题；所有以后录入、实际默写过的词优先按曲线复现。
+  BASE_REVIEW.forEach(w=>add(w,'基础库抽查'));
   return {list,due};
 }
 function weakness(){
@@ -66,7 +83,7 @@ function autoChecks(ws){
     if(w.id==='irregular')q.push('视觉词形：给 muscle、clothes、sausage 看3秒后遮住写；当天、次日、第3天、第7天连续都对才降级。');
   }); return q;
 }
-function render(){const last=data.records.at(-1); const target=last?plus(last.date,1):iso(today); const {list,due}=buildPlan(target); const ws=weakness(); const rec=khanRecommendation(ws);
+function render(){const last=data.records.at(-1); const target=last?plus(last.date,1):iso(today); const computed=buildPlan(target); const list=(last?.nextPlan?.length?last.nextPlan:computed.list); const ws=weakness(); const rec=khanRecommendation(ws);
   if(last||Object.values(data.tests||{}).some(x=>x!=='')){['plan','analysis','khanPlan','checkPlan','weekend'].forEach(id=>$(id).classList.remove('hidden'));}
   $('nextDate').textContent='（'+target+'）';
   const words=list.length?list:[];$('dictationList').innerHTML=words.map((x,i)=>`<div class="word"><b>${i+1}.</b> ${x.word}<span class="tag">${x.tag}</span></div>`).join('')||'<p>先保存一次“今天录入”，系统才会生成下一次清单。</p>';
@@ -77,7 +94,19 @@ function render(){const last=data.records.at(-1); const target=last?plus(last.da
   const totalErrors=data.records.reduce((n,r)=>n+r.errors.length,0);$('weekendContent').innerHTML=`<p>已记录 ${data.records.length} 天，累计错词次数 ${totalErrors}。周末从所有错误词中抽20个，再从“已掌握词”抽10个，并做一次本页的规则检验。</p><ul class="rule-list"><li><b>如果旧词会写、陌生词不行：</b>纸笔练习要改为规则卡 + 陌生词读写；可汗做 Main/Basic，不刷 Practice。</li><li><b>如果陌生词能读写、旧词仍错：</b>规律已会，继续按次日/第3天/第7天默写，不增加新规则。</li><li><b>如果多音节、词组空格常错：</b>每题默写前先口头“拍音节 / 说词块”，不要直接整词硬写。</li></ul>`;
   $('soundCardContent').innerHTML=SOUNDS.map(s=>`<div class="sound"><small><b>${s[0]}</b></small><b>${s[1]}</b> <em>${s[2]}</em><small>例词：${s[3]}<br>${s[4]}</small></div>`).join('');
 }
-function saveRecord(){const date=$('studyDate').value||iso(today),newWords=parseLines($('newWords').value),errors=parseLines($('errorWords').value),nextNewWords=parseLines($('nextNewWords').value);if(!newWords.length&&!errors.length){alert('请至少输入今天的新词或错词。');return} data.records=data.records.filter(r=>r.date!==date);data.records.push({date,newWords,errors,nextNewWords,khan:$('khanDone').value});data.records.sort((a,b)=>a.date.localeCompare(b.date));save();render();document.getElementById('plan').scrollIntoView({behavior:'smooth'});}
+function saveRecord(){
+  const date=$('studyDate').value||iso(today),newWords=parseLines($('newWords').value),errors=parseLines($('errorWords').value),nextNewWords=parseLines($('nextNewWords').value);
+  if(!newWords.length&&!errors.length){alert('请至少输入今天的新词或错词。');return}
+  const previous=data.records.find(r=>plus(r.date,1)===date);
+  // 若昨天已生成过今天的40词，表示这些词今天实际被默写，全部进入下一轮记忆曲线；若没有，至少追踪今天的5个新词。
+  const reviewedWords=(previous?.nextPlan||[]).map(x=>typeof x==='string'?x:x.word);
+  data.records=data.records.filter(r=>r.date!==date);
+  const record={date,newWords,errors,nextNewWords,reviewedWords:reviewedWords.length?reviewedWords:newWords,khan:$('khanDone').value};
+  data.records.push(record);data.records.sort((a,b)=>a.date.localeCompare(b.date));rebuildWordState();
+  // 立即保存“明天的40词”；明天录入批改结果时系统就知道哪些词实际参与过默写。
+  record.nextPlan=buildPlan(plus(date,1)).list;
+  save();render();document.getElementById('plan').scrollIntoView({behavior:'smooth'});
+}
 function saveTest(){data.tests={combo:$('comboScore').value,decode:$('decodeScore').value,magic:$('magicScore').value,syllable:$('syllableScore').value};save();render();}
 function fill(){
   const now=iso(today); $('studyDate').value=now;
