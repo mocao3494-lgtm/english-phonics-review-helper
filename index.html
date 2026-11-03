@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#175c4d" />
+  <title>英语拼读巩固助手</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand"><span>字母拼读</span><strong>英语拼读巩固助手</strong></div>
+    <p>每天输入新词和错词，自动生成下一次默写、巩固路径和可汗学院任务。</p>
+  </header>
+  <main>
+    <section class="notice">数据只保存在本手机/浏览器。请定期点击“导出备份”；换手机后用“导入备份”恢复。</section>
+
+    <section class="card input-card" id="entry">
+      <h1>今天录入</h1>
+      <p class="help">每天默写批改后只要录入两项：今天的5个新词、今天写错的词。系统会把错词排入明天、第3天和第7天。</p>
+      <label>日期 <input id="studyDate" type="date" /></label>
+      <label>今天5个新词 <small>每行一个，或用英文逗号隔开。今天示例已填入。</small>
+        <textarea id="newWords" rows="4" placeholder="dress&#10;shirt&#10;skirt&#10;shorts&#10;boots"></textarea>
+      </label>
+      <label>今天默写错误词 <small>每行一个。可加中文提示，例如：trousers | 裤子</small>
+        <textarea id="errorWords" rows="6" placeholder="例如：important | 重要的&#10;in front of | 在……前面"></textarea>
+      </label>
+      <label>今天孩子在可汗学院学习的主题 <small>可不填；若填，系统会记录进周末复盘。</small>
+        <select id="khanDone">
+          <option value="">今天未做或暂不记录</option>
+          <option value="1-Syllable & 2-Syllable Words">一、二音节词</option>
+          <option value="Final -e & Long Vowel Teams">Magic e 与长元音组合</option>
+          <option value="Consonant Blends">辅音连缀</option>
+          <option value="Consonant Digraphs">字母组合 ch sh th wh</option>
+          <option value="Inflectional Endings">词尾 ing ed s</option>
+          <option value="Nonsense Words">陌生词解码</option>
+        </select>
+      </label>
+      <button class="primary" id="saveAndPlan">保存并生成下一次计划</button>
+    </section>
+
+    <section class="card" id="test">
+      <h2>本周规则检验</h2>
+      <p class="help">这一栏专门解决“孩子会写以前学过的单词，但不一定懂规则”的问题。周末或每学完一个规律后填写。</p>
+      <div class="test-grid">
+        <label>字母组合辨认 <input id="comboScore" type="number" min="0" max="10" placeholder="0-10" /> /10</label>
+        <label>陌生词读写 <input id="decodeScore" type="number" min="0" max="10" placeholder="0-10" /> /10</label>
+        <label>Magic e 对比 <input id="magicScore" type="number" min="0" max="4" placeholder="0-4" /> /4</label>
+        <label>多音节拆分 <input id="syllableScore" type="number" min="0" max="5" placeholder="0-5" /> /5</label>
+      </div>
+      <button class="secondary" id="saveTest">保存检验结果并更新建议</button>
+    </section>
+
+    <section class="card hidden" id="plan">
+      <h2>下一次默写清单 <span id="nextDate"></span></h2>
+      <p id="planNote" class="help"></p>
+      <div id="dictationList" class="dictation-list"></div>
+      <div class="actions"><button class="secondary" onclick="window.print()">打印本次作业</button><button class="secondary" id="markAllCorrect">本次全对</button></div>
+    </section>
+
+    <section class="card hidden" id="analysis">
+      <h2>孩子当前薄弱项分析</h2>
+      <div id="weaknessContent"></div>
+    </section>
+
+    <section class="card hidden" id="khanPlan">
+      <h2>明天可汗学院怎么学</h2>
+      <div id="khanContent"></div>
+    </section>
+
+    <section class="card hidden" id="checkPlan">
+      <h2>怎样判断是否真正掌握</h2>
+      <div id="checkContent"></div>
+    </section>
+
+    <section class="card" id="soundCards">
+      <h2>字母组合 音标 音素 规则卡</h2>
+      <p class="help">每天选当天相关的2-3张卡：看组合，读出音素，说例词，最后写一个同规律的新词。音标是帮助家长核对发音的工具；跟读时以可汗学院的声音为准。</p>
+      <div id="soundCardContent" class="sound-grid"></div>
+      <p class="help">注意：<b>th、oo、ou、ea</b>等组合在不同单词中可能有不同读音。先掌握卡片上的常见读音；遇到例外词单独标记，不把规则说成绝对正确。</p>
+    </section>
+
+    <section class="card hidden" id="weekend">
+      <h2>周末整体复盘</h2>
+      <div id="weekendContent"></div>
+    </section>
+
+    <section class="card tools">
+      <h2>数据与使用说明</h2>
+      <details><summary>软件里具体点哪里</summary><ol><li>打开 Khan Academy Kids 教师端，点 <b>Reading</b>（阅读）。</li><li>右上角选择 <b>1st Grade</b>（一年级）。</li><li>按本页面显示的课程标题找到卡片，首次只点 <b>Main</b>（主课）。</li><li>勾选孩子，再点 <b>Save</b>（保存/布置）。</li><li>完成后点 <b>Students</b> → 点孩子 → <b>Assignments</b> 看作业，或 <b>All Progress</b> 看全部记录。</li></ol></details>
+      <details><summary>怎么区分会写单词和会拼读规则</summary><p>会写旧词只说明孩子记住了这个词；只有“能说出组合读音、能读写没背过但规律相同的词、能区分 hop/hope 这类对比词”才算真正掌握规则。本页面的“本周规则检验”专门记录这三件事。</p></details>
+      <div class="actions"><button class="secondary" id="exportData">导出备份</button><label class="upload">导入备份<input id="importData" type="file" accept="application/json" /></label><button class="danger" id="resetData">清空全部数据</button></div>
+    </section>
+  </main>
+  <footer>每日流程：可汗规律课 8-10 分钟 → 新词词块预习 5 分钟 → 默写 8-10 分钟 → 录入错词 3 分钟。</footer>
+  <script src="./app.js"></script>
+</body>
+</html>
