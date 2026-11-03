@@ -10,20 +10,23 @@
 <body>
   <header>
     <div class="brand"><span>字母拼读</span><strong>英语拼读巩固助手</strong></div>
-    <p>每天输入新词和错词，自动生成下一次默写、巩固路径和可汗学院任务。</p>
+    <p>每天录入新词和错词，自动追踪全部默写词，生成下一次默写、薄弱项和可汗学院调整方案。</p>
   </header>
   <main>
     <section class="notice">数据只保存在本手机/浏览器。请定期点击“导出备份”；换手机后用“导入备份”恢复。</section>
 
     <section class="card input-card" id="entry">
       <h1>今天录入</h1>
-      <p class="help">每天默写批改后只要录入两项：今天的5个新词、今天写错的词。系统会把错词排入明天、第3天和第7天。</p>
+      <p class="help">每天默写批改后录入：今天的5个新词、今天写错的词，以及明天固定要学的5个新词。所有录入词自动按次日、第3天、第7天、第14天、第30天复现；错得多的词会额外提前出现。</p>
       <label>日期 <input id="studyDate" type="date" /></label>
       <label>今天5个新词 <small>每行一个，或用英文逗号隔开。今天示例已填入。</small>
         <textarea id="newWords" rows="4" placeholder="dress&#10;shirt&#10;skirt&#10;shorts&#10;boots"></textarea>
       </label>
       <label>今天默写错误词 <small>每行一个。可加中文提示，例如：trousers | 裤子</small>
         <textarea id="errorWords" rows="6" placeholder="例如：important | 重要的&#10;in front of | 在……前面"></textarea>
+      </label>
+      <label>明天固定要学的5个新词 <small>每行一个。它们一定排在下一次40词的最前面；如还不知道，可暂不填，明天补填。</small>
+        <textarea id="nextNewWords" rows="4" placeholder="明天的5个新词，每行一个"></textarea>
       </label>
       <label>今天孩子在可汗学院学习的主题 <small>可不填；若填，系统会记录进周末复盘。</small>
         <select id="khanDone">
@@ -40,8 +43,8 @@
     </section>
 
     <section class="card" id="test">
-      <h2>本周规则检验</h2>
-      <p class="help">这一栏专门解决“孩子会写以前学过的单词，但不一定懂规则”的问题。周末或每学完一个规律后填写。</p>
+      <h2>规则检验：自动出题 + 可选记录得分</h2>
+      <p class="help">下方会根据每天的错词、新词和累计错因自动生成检验重点；您不填分数也会自动调整。周末或做完自动题后，再填分数，会让建议更准确。</p>
       <div class="test-grid">
         <label>字母组合辨认 <input id="comboScore" type="number" min="0" max="10" placeholder="0-10" /> /10</label>
         <label>陌生词读写 <input id="decodeScore" type="number" min="0" max="10" placeholder="0-10" /> /10</label>
@@ -59,7 +62,7 @@
     </section>
 
     <section class="card hidden" id="analysis">
-      <h2>孩子当前薄弱项分析</h2>
+      <h2>孩子当前薄弱项分析（由所有错词自动累计）</h2>
       <div id="weaknessContent"></div>
     </section>
 
@@ -69,7 +72,7 @@
     </section>
 
     <section class="card hidden" id="checkPlan">
-      <h2>怎样判断是否真正掌握</h2>
+      <h2>今日规则检验（由错词自动生成）</h2>
       <div id="checkContent"></div>
     </section>
 
