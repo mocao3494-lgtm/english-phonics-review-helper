@@ -1,0 +1,14 @@
+/* 每日总表升级样式：保留旧页面，专门优化当天打印卡和手机阅读。 */
+.primary.compact{width:auto;min-width:220px}
+.daily-print{margin-top:12px;color:#153c35}
+.daily-print h3{margin:22px 0 9px;padding-left:10px;border-left:5px solid #e65b4f;font-size:1.18rem}
+.daily-print table{width:100%;border-collapse:collapse;margin:8px 0 12px;font-size:.94rem}
+.daily-print th,.daily-print td{border:1px solid #bcd0c9;padding:7px;vertical-align:top;text-align:left}
+.daily-print th{background:#e9f5f0}
+.daily-print .red-tip{color:#b42318;font-weight:700;background:#fff0ef;padding:8px 10px;border-radius:8px}
+.daily-print .story-en{background:#f2f8ff;border:1px solid #bed6e8;padding:12px;border-radius:8px;line-height:1.75}
+.daily-print .daily-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.daily-print .review-words,.daily-print .curve-note{line-height:1.8;background:#f5f8f5;padding:9px;border-radius:8px}
+@media(max-width:620px){.daily-print table{font-size:.82rem}.daily-print th,.daily-print td{padding:5px}.primary.compact{width:100%}}
+@media print{body{background:#fff}.daily-print{font-size:12pt}.daily-print h3{font-size:15pt;break-after:avoid}.daily-print table{page-break-inside:avoid}.daily-print .story-en{page-break-inside:avoid}}
+
