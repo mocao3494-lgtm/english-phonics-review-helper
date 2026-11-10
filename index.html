@@ -20,6 +20,10 @@
       <h1>今天录入</h1>
       <p class="help"><b>最简单的用法：</b>每天默写批改后填“今天5个新词”和“今天错词”，再点绿色按钮。网站会生成下一次40词清单和一张可直接打印的每日学习卡。所有词按次日、第3天、第7天、第14天、第30天复现；错得多的词会额外提前出现。</p>
       <label>日期 <input id="studyDate" type="date" /></label>
+      <div class="plan-loader">
+        <button type="button" class="secondary compact" id="fillMasterPlan">按总表自动填入当天 5 个新词</button>
+        <p class="help" id="masterPlanHint">选择日期后，可直接从“每日新词计划总表”载入当天的 5 个新词、中文、音标和组合提示。</p>
+      </div>
       <label>今天5个新词 <small>每行一个，或用英文逗号隔开。若方便，可写成：英文 | 中文 | 音标，例如 photo | 照片 | /ˈfəʊtəʊ/。</small>
         <textarea id="newWords" rows="4" placeholder="dress&#10;shirt&#10;skirt&#10;shorts&#10;boots"></textarea>
       </label>
@@ -109,7 +113,7 @@
     </section>
   </main>
   <footer>每日流程：可汗规律课 8-10 分钟 → 新词词块预习 5 分钟 → 规律朗读迁移 5 分钟 → 默写 8-10 分钟 → 录入错词 3 分钟。</footer>
+  <script src="./master-plan.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
-
