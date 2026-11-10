@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#175c4d" />
   <title>英语拼读每日打印助手</title>
   <link rel="stylesheet" href="./style.css" />
-  <link rel="stylesheet" href="./upgrade.css?v=20261110-2" />
+  <link rel="stylesheet" href="./upgrade.css?v=20261110-3" />
 </head>
 <body>
   <header>
@@ -17,34 +17,34 @@
     <section class="notice">数据只保存在本手机/浏览器。请定期点击“导出备份”；换手机后用“导入备份”恢复。</section>
 
     <section class="card input-card" id="entry">
-      <h1>今天录入</h1>
-      <p class="help"><b>只做两件事：</b>确认日期 → 填写“今天默写错误词” → 点绿色按钮。今天与明天的新词由总表自动显示，其他词会按次日、第3天、第7天、第14天、第30天自动复现；错得多的词会额外提前出现。</p>
-      <label>日期 <input id="studyDate" type="date" /></label>
-      <div class="plan-loader">
-        <button type="button" class="secondary compact" id="fillMasterPlan">重新载入今天与明天的新词</button>
-        <p class="help" id="masterPlanHint">网页会按总表自动显示今天和明天的 5 个新词。</p>
+      <h1>今天只做 3 步</h1>
+      <p class="help"><b>① 学新词 → ② 默写后勾错词 → ③ 保存。</b>其他复习安排、规则和可汗课程由系统自动判断，您不用填写。</p>
+      <div class="today-words" id="todayWordsPanel">
+        <p class="eyebrow">今天的新词</p>
+        <h2 id="todayWordDate">正在载入…</h2>
+        <div id="todayWordChips" class="word-chips"></div>
+        <p id="todayFocus" class="today-focus"></p>
       </div>
-      <label>今天固定新词 <small>系统自动带入；只需让孩子学习，不用手动填写。</small>
-        <textarea id="newWords" rows="4" readonly aria-readonly="true"></textarea>
-      </label>
-      <label>今天默写错误词 <small>每行一个。可加中文/音标，例如：trousers | 裤子 | /ˈtraʊzəz/。只写英文也可以。</small>
-        <textarea id="errorWords" rows="6" placeholder="例如：important | 重要的&#10;in front of | 在……前面"></textarea>
-      </label>
       <div class="correction-box" id="correctionBox">
-        <h3>扫码批改：勾选今天写错的词</h3>
-        <p class="help">打印作业右上角二维码会打开本页并自动定位到当天。您只要勾选错词，再点底部绿色“保存并生成下一次计划”。日期：<b id="correctionDate"></b>。</p>
+        <h3>② 批改今天默写：只勾选写错的词</h3>
+        <p class="help">打印作业右上角二维码会直接打开这里。日期：<b id="correctionDate"></b>。没有错误就不勾选。</p>
         <div id="correctionWords" class="correction-words"></div>
         <div class="actions"><button type="button" class="secondary" id="selectAllErrors">全部勾选</button><button type="button" class="secondary" id="clearAllErrors">全部取消</button></div>
       </div>
-      <label>家长临时新增默写词 <small>每行一个英文；也可写“英文 | 中文 | 音标”。网页会优先自动查询中文、音标和词性；查不到时请按教材核对。新增词会从下一次默写开始进入复习曲线。</small>
-        <textarea id="customWords" rows="3" placeholder="例如：engine&#10;helmet | 头盔 | /ˈhelmɪt/"></textarea>
-      </label>
-      <button type="button" class="secondary" id="addCustomWords">加入并自动补全</button><p class="help" id="customStatus"></p>
-      <label>明天固定新词 <small>这是明天一定会学习、也会进入后续默写的 5 个词；仅供预览，无需填写。</small>
-        <textarea id="nextNewWords" rows="4" readonly aria-readonly="true"></textarea>
-      </label>
-      <label>今天孩子在可汗学院学习的主题 <small>可不填；若填，系统会记录进周末复盘。</small>
-        <select id="khanDone">
+      <textarea id="errorWords" class="data-only" aria-hidden="true"></textarea>
+      <textarea id="newWords" class="data-only" aria-hidden="true"></textarea>
+      <textarea id="nextNewWords" class="data-only" aria-hidden="true"></textarea>
+      <button class="primary" id="saveAndPlan">③ 保存错词，并生成明天复习</button>
+      <details class="optional-input"><summary>补充功能（平时不用点）</summary>
+        <label>日期 <input id="studyDate" type="date" /></label>
+        <button type="button" class="secondary compact" id="fillMasterPlan">重新载入当天新词</button>
+        <p class="help" id="masterPlanHint"></p>
+        <label>临时新增默写词 <small>每行一个英文；也可写“英文 | 中文 | 音标”。</small>
+          <textarea id="customWords" rows="3" placeholder="例如：engine&#10;helmet | 头盔 | /ˈhelmɪt/"></textarea>
+        </label>
+        <button type="button" class="secondary" id="addCustomWords">加入并自动补全</button><p class="help" id="customStatus"></p>
+        <label>记录今天可汗主题（可不填）
+          <select id="khanDone">
           <option value="">今天未做或暂不记录</option>
           <option value="1-Syllable & 2-Syllable Words">一、二音节词</option>
           <option value="Final -e & Long Vowel Teams">Magic e 与长元音组合</option>
@@ -55,9 +55,9 @@
           <option value="Nonsense Words">陌生词解码</option>
           <option value="Reading Fluency">朗读流利度</option>
           <option value="Books / Early Readers">绘本与早期读物阅读迁移</option>
-        </select>
-      </label>
-      <button class="primary" id="saveAndPlan">保存并生成下一次计划</button>
+          </select>
+        </label>
+      </details>
     </section>
 
     <section class="card hidden" id="dailyCard">
@@ -67,7 +67,7 @@
       <div class="actions"><button class="primary compact" id="exportDailyWorksheet">导出当天总表（WPS .doc）</button><button class="secondary" id="printDailyWorksheet">打印当天总表 / 保存 PDF</button></div>
     </section>
 
-    <section class="card" id="test">
+    <section class="card advanced-card" id="test">
       <h2>规则检验：自动出题 + 可选记录得分</h2>
       <p class="help">下方会根据每天的错词、新词和累计错因自动生成检验重点；您不填分数也会自动调整。周末或做完自动题后，再填分数，会让建议更准确。</p>
       <div class="test-grid">
@@ -96,12 +96,12 @@
       <div id="khanContent"></div>
     </section>
 
-    <section class="card hidden" id="checkPlan">
+    <section class="card hidden advanced-card" id="checkPlan">
       <h2>今日规则检验（由错词自动生成）</h2>
       <div id="checkContent"></div>
     </section>
 
-    <section class="card" id="soundCards">
+    <section class="card advanced-card" id="soundCards">
       <h2>字母组合 音标 音素 规则卡</h2>
       <p class="help">每天选当天相关的2-3张卡：看组合，读出音素，说例词，最后写一个同规律的新词。音标是帮助家长核对发音的工具；跟读时以可汗学院的声音为准。</p>
       <div id="soundCardContent" class="sound-grid"></div>
@@ -114,7 +114,9 @@
       <div id="weekendContent"></div>
     </section>
 
-    <section class="card tools">
+    <button type="button" class="secondary more-tools" id="toggleAdvanced">显示更多功能（规则卡、可汗记录、备份）</button>
+
+    <section class="card tools advanced-card">
       <h2>数据与使用说明</h2>
       <details><summary>怎么导出到鸿蒙手机/WPS</summary><ol><li>当天学习卡生成后，点“<b>导出当天总表（WPS .doc）</b>”；只需默写时，点“<b>导出下一次 40 词默写作业（.doc）</b>”。这两种都是可用 WPS 打开的 Word 格式，不是数据备份。</li><li>在鸿蒙手机的下载通知或“文件管理”中找到该 <b>.doc</b> 文件，点“用 WPS Office 打开”。随后可编辑、打印或在 WPS 中另存为 PDF。</li><li>若想直接得到 PDF，点“<b>打印当天总表 / 保存 PDF</b>”，在手机系统打印页选择“保存为 PDF”或“分享至 WPS”。</li><li>“<b>导出备份</b>”是 <b>.json</b> 数据文件，只用于以后导入本工具恢复记录，不用 WPS 打开。</li></ol></details>
       <details><summary>打印后怎样扫码批改、自动排明天复习</summary><ol><li>打印“下一次 40 词默写作业”后，作业右上角会有二维码。孩子写完后，用<b>同一台手机</b>的相机/微信扫一扫二维码。</li><li>扫码会打开当天的“勾选今天写错的词”。只勾选家长判错的词；若临时有别的错词，可直接在上方“今天默写错误词”框内补充。</li><li>点绿色“<b>保存并生成下一次计划</b>”。系统会把当天错词记入：次日必复习、随后第3天/第7天/第14天/第30天继续复现；错得多的词会更频繁出现。</li><li><b>重要：</b>错题记录保存在扫码这台手机的浏览器里。请固定用同一台手机扫码，并每周点一次“导出备份”；换手机或清除浏览器数据后，使用“导入备份”恢复。</li></ol></details>
@@ -125,7 +127,7 @@
   </main>
   <footer>每日流程：可汗规律课 8-10 分钟 → 新词词块预习 5 分钟 → 规律朗读迁移 5 分钟 → 默写 8-10 分钟 → 录入错词 3 分钟。</footer>
   <script src="./master-plan.js?v=20261110-2"></script>
-  <script src="./app.js?v=20261110-7"></script>
+  <script src="./app.js?v=20261110-8"></script>
 </body>
 </html>
 
