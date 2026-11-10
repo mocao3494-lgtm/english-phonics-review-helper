@@ -5,6 +5,28 @@ const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().sli
 const plus=(date,days)=>{const d=new Date(date+'T12:00:00');d.setDate(d.getDate()+days);return iso(d)};
 const norm=s=>s.trim().toLowerCase().replace(/\s+/g,' ');
 let data=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(LEGACY_KEY)||'{"records":[],"tests":{}}');
+const masterPlanFor=date=>(window.MASTER_DAILY_PLAN||[]).find(x=>x.date===date);
+const formatItems=items=>(items||[]).map(x=>typeof x==='string'?x:[x.word,x.gloss||x.cn,x.ipa].filter(Boolean).join(' | ')).join('\n');
+function planRuleIds(focus=''){
+  const pairs=[['r 控制','r_controlled'],['元音组合','vowel_teams'],['辅音连缀','blends'],['辅音字母组合','blends'],['词尾','endings'],['音节','multisyllable'],['短语','phrases'],['视觉','irregular']];
+  return [...new Set(pairs.filter(([key])=>focus.includes(key)).map(([,id])=>id))];
+}
+function updateMasterPlanHint(){
+  const plan=masterPlanFor($('studyDate').value);
+  $('masterPlanHint').innerHTML=plan
+    ? `<b>总表已找到：</b>${escapeHtml(plan.date)} 的 5 个新词是 ${plan.words.map(x=>`<b>${escapeHtml(x.word)}</b>`).join('、')}。当天重点：${escapeHtml(plan.focus)}。点击上方按钮即可填入。`
+    : '这个日期不在当前总表的 81 个新词学习日中。可手动填写新词；周末可只填错词，做总复习。';
+}
+function fillMasterPlan(){
+  const date=$('studyDate').value||iso(today), plan=masterPlanFor(date);
+  if(!plan){alert('总表中没有这个日期的新词。周末请只录入错词；其他日期可手动填写。');return;}
+  const current=$('newWords').value.trim();
+  if(current && current!==formatItems(plan.words) && !confirm('这会把“今天5个新词”替换为总表中该日期的5个词。已经手动填写的内容会被覆盖，是否继续？'))return;
+  $('newWords').value=formatItems(plan.words);
+  const next=masterPlanFor(plus(date,1));
+  $('nextNewWords').value=next?formatItems(next.words):'';
+  updateMasterPlanHint();
+}
 
 const PATTERNS=[
   {id:'multisyllable',name:'多音节拆分',match:w=>['important','television','exercise','difficult','holiday','prepare','remember','practise','photo album','hockey','tidy'].some(x=>w.includes(x)),khan:'1-Syllable & 2-Syllable Words',why:'先拍音节，再用竖线把词块分开；这类错误说明完整词形还没稳定。',test:'给 prepare、holiday、difficult、remember 和一个新词 volcano，要求先拍音节、画竖线、再写。4/5 才通过。'},
@@ -136,7 +158,9 @@ function dailyRules(record){
   const words=[...(record.errors||[]),...(record.newWords||[])];
   const ids=[...new Set(words.flatMap(ruleOf))];
   const ordered=ids.sort((a,b)=>{const ae=(record.errors||[]).filter(w=>ruleOf(w).includes(a)).length;const be=(record.errors||[]).filter(w=>ruleOf(w).includes(b)).length;return be-ae});
-  return (ordered.length?ordered:['vowel_teams','multisyllable']).slice(0,3).map(id=>({id,name:PATTERNS.find(p=>p.id===id)?.name||id,detail:RULE_DETAILS[id]||''}));
+  const fromMaster=planRuleIds(record.masterFocus||masterPlanFor(record.date)?.focus||'');
+  const selected=[...new Set([...ordered,...fromMaster])];
+  return (selected.length?selected:['vowel_teams','multisyllable']).slice(0,3).map(id=>({id,name:PATTERNS.find(p=>p.id===id)?.name||id,detail:RULE_DETAILS[id]||''}));
 }
 function reviewForDaily(record){
   const earlier=data.records.filter(r=>r.date<record.date).sort((a,b)=>b.date.localeCompare(a.date));
@@ -160,8 +184,9 @@ function dailyCardMarkup(record){
   const newItems=(record.newWords||[]).map(w=>itemFor(w,metas));
   const reviewItems=reviewForDaily(record).map(w=>itemFor(w,metas));
   const rules=dailyRules(record), rec=khanRecommendation(weakness()), story=storyFor(record);
+  const masterFocus=record.masterFocus||masterPlanFor(record.date)?.focus||'';
   const curve=CURVE.map(n=>plus(record.date,n)).join('、');
-  return `<div class="daily-print"><div class="daily-top"><b>日期：${dateLabel(record.date)}</b><span>姓名：____________</span></div><h3>① 今天 5 个新词：先读词块，再写单词</h3><table class="daily-table"><thead><tr><th>英文</th><th>中文</th><th>音标</th><th>词块/规则</th><th>默写一遍</th></tr></thead><tbody>${newItems.map(x=>`<tr><td><b>${escapeHtml(x.word)}</b></td><td>${escapeHtml(x.gloss)}</td><td>${escapeHtml(x.ipa)}</td><td>${escapeHtml(x.chunk)}</td><td></td></tr>`).join('')}</tbody></table><h3>② 今天复习词：默写后圈出词块</h3><p class="review-words">${reviewItems.map((x,i)=>`${i+1}. ${escapeHtml(x.word)}（${escapeHtml(x.gloss)}）`).join('　')||'今天暂无历史复习词；明天开始会自动加入。'}</p><h3>③ 今天只学这 ${rules.length} 条规则</h3><ol class="rule-list daily-rules">${rules.map(r=>`<li><b>${escapeHtml(r.name)}</b>：${escapeHtml(r.detail)}</li>`).join('')}</ol><p class="red-tip">重点：孩子要能“圈组合 → 说音标/音素 → 读例词 → 写一个同规律陌生词”。只会默写见过的词，不等于会规则。</p><h3>④ 可汗学院（8–10 分钟）</h3><ol class="rule-list"><li>点 <b>Reading</b> → 右上角 <b>1st Grade</b> → 找 <b>${escapeHtml(rec.course)}</b>。</li><li>先点 <b>${escapeHtml(rec.card)}</b>。${escapeHtml(rec.text)}</li><li>完成后让孩子说出今天一个组合和对应读音；说不出，就做本页第③部分，不急着刷 Practice。</li></ol><h3>⑤ 冒险小阅读：《${escapeHtml(story.title)}》</h3><p class="story-en">${escapeHtml(story.en)}</p><p>${escapeHtml(story.cn)}</p><ol class="rule-list">${story.questions.map(q=>`<li>${escapeHtml(q)}</li>`).join('')}</ol><p class="curve-note">本日新词后续复习日期：<b>${curve}</b>。错词自动追加到次日，并继续按曲线出现。</p></div>`;
+  return `<div class="daily-print"><div class="daily-top"><b>日期：${dateLabel(record.date)}</b><span>姓名：____________</span></div>${masterFocus?`<p class="master-focus"><b>总表当天重点：</b>${escapeHtml(masterFocus)}。网页会先结合这个重点，再结合累计错词决定今日练习。</p>`:''}<h3>① 今天 5 个新词：先读词块，再写单词</h3><table class="daily-table"><thead><tr><th>英文</th><th>中文</th><th>音标</th><th>词块/规则</th><th>默写一遍</th></tr></thead><tbody>${newItems.map(x=>`<tr><td><b>${escapeHtml(x.word)}</b></td><td>${escapeHtml(x.gloss)}</td><td>${escapeHtml(x.ipa)}</td><td>${escapeHtml(x.chunk)}</td><td></td></tr>`).join('')}</tbody></table><h3>② 今天复习词：默写后圈出词块</h3><p class="review-words">${reviewItems.map((x,i)=>`${i+1}. ${escapeHtml(x.word)}（${escapeHtml(x.gloss)}）`).join('　')||'今天暂无历史复习词；明天开始会自动加入。'}</p><h3>③ 今天只学这 ${rules.length} 条规则</h3><ol class="rule-list daily-rules">${rules.map(r=>`<li><b>${escapeHtml(r.name)}</b>：${escapeHtml(r.detail)}</li>`).join('')}</ol><p class="red-tip">重点：孩子要能“圈组合 → 说音标/音素 → 读例词 → 写一个同规律陌生词”。只会默写见过的词，不等于会规则。</p><h3>④ 可汗学院（8–10 分钟）</h3><ol class="rule-list"><li>点 <b>Reading</b> → 右上角 <b>1st Grade</b> → 找 <b>${escapeHtml(rec.course)}</b>。</li><li>先点 <b>${escapeHtml(rec.card)}</b>。${escapeHtml(rec.text)}</li><li>完成后让孩子说出今天一个组合和对应读音；说不出，就做本页第③部分，不急着刷 Practice。</li></ol><h3>⑤ 冒险小阅读：《${escapeHtml(story.title)}》</h3><p class="story-en">${escapeHtml(story.en)}</p><p>${escapeHtml(story.cn)}</p><ol class="rule-list">${story.questions.map(q=>`<li>${escapeHtml(q)}</li>`).join('')}</ol><p class="curve-note">本日新词后续复习日期：<b>${curve}</b>。错词自动追加到次日，并继续按曲线出现。</p></div>`;
 }
 function worksheetHtml(title,body){return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#111;margin:18mm;font-size:12pt;line-height:1.6}h1{text-align:center;font-size:20pt}h2{font-size:15pt;border-bottom:1px solid #1c5e4f;padding-bottom:3px}h3{font-size:13pt;margin:14px 0 6px;color:#155346}table{border-collapse:collapse;width:100%;font-size:10.5pt}th,td{border:1px solid #333;padding:6px;vertical-align:top}th{background:#eaf4f0}.daily-top{display:flex;justify-content:space-between;border-bottom:1px solid #333;padding-bottom:6px}.daily-table td:last-child{height:30px}.review-words{padding:8px;background:#f4f8f5}.red-tip{color:#b00020;font-weight:bold;background:#fff1f1;padding:8px}.story-en{font-family:Arial,sans-serif}.curve-note{background:#fff6d9;padding:8px}@page{size:A4;margin:14mm}</style></head><body><h1>${escapeHtml(title)}</h1>${body}</body></html>`}
 function downloadDoc(name,html){const blob=new Blob(['\ufeff',html],{type:'application/msword;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
@@ -187,7 +212,8 @@ function saveRecord(){
   // 若昨天已生成过今天的40词，表示这些词今天实际被默写，全部进入下一轮记忆曲线；若没有，至少追踪今天的5个新词。
   const reviewedWords=(previous?.nextPlan||[]).map(x=>typeof x==='string'?x:x.word);
   data.records=data.records.filter(r=>r.date!==date);
-  const record={date,newWords,errors,nextNewWords,newItems,errorItems,nextNewItems,reviewedWords:reviewedWords.length?reviewedWords:newWords,khan:$('khanDone').value};
+  const master=masterPlanFor(date);
+  const record={date,newWords,errors,nextNewWords,newItems,errorItems,nextNewItems,reviewedWords:reviewedWords.length?reviewedWords:newWords,khan:$('khanDone').value,masterFocus:master?.focus||''};
   data.records.push(record);data.records.sort((a,b)=>a.date.localeCompare(b.date));rebuildWordState();
   // 立即保存“明天的40词”；明天录入批改结果时系统就知道哪些词实际参与过默写。
   record.nextPlan=buildPlan(plus(date,1)).list;
@@ -211,15 +237,17 @@ function printDailyWorksheet(){
   openPrint(`英语拼读每日总表｜${dateLabel(last.date)}`,dailyCardMarkup(last));
 }
 function fill(){
-  const now=iso(today); $('studyDate').value=now;
+  let now=iso(today); const first=(window.MASTER_DAILY_PLAN||[])[0]; if(!data.records.length&&first&&now<first.date)now=first.date; $('studyDate').value=now;
   const existing=data.records.find(r=>r.date===now), last=data.records.at(-1);
-  const formatItems=items=>(items||[]).map(x=>typeof x==='string'?x:[x.word,x.gloss,x.ipa].filter(Boolean).join(' | ')).join('\n');
   if(existing){$('newWords').value=formatItems(existing.newItems?.length?existing.newItems:existing.newWords);$('errorWords').value=formatItems(existing.errorItems?.length?existing.errorItems:existing.errors);$('nextNewWords').value=formatItems(existing.nextNewItems?.length?existing.nextNewItems:existing.nextNewWords);$('khanDone').value=existing.khan||'';}
   else if(last&&plus(last.date,1)===now){$('newWords').value=(last.nextNewWords||[]).join('\n');$('nextNewWords').value='';}
+  else if(!data.records.length&&masterPlanFor(now)){fillMasterPlan();}
   else if(!data.records.length)$('newWords').value='dress\nshirt\nskirt\nshorts\nboots';
-  const t=data.tests||{};$('comboScore').value=t.combo||'';$('decodeScore').value=t.decode||'';$('magicScore').value=t.magic||'';$('syllableScore').value=t.syllable||'';render();
+  const t=data.tests||{};$('comboScore').value=t.combo||'';$('decodeScore').value=t.decode||'';$('magicScore').value=t.magic||'';$('syllableScore').value=t.syllable||'';updateMasterPlanHint();render();
 }
 $('saveAndPlan').onclick=saveRecord;$('saveTest').onclick=saveTest;
+$('fillMasterPlan').onclick=fillMasterPlan;
+$('studyDate').onchange=updateMasterPlanHint;
 $('exportWorksheet').onclick=exportWorksheet;
 $('exportDailyWorksheet').onclick=exportDailyWorksheet;
 $('printDailyWorksheet').onclick=printDailyWorksheet;
