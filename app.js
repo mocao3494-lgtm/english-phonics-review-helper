@@ -116,13 +116,23 @@ function rebuildWordState(){
 // 家长已确认的历史批改结果。首次打开新版网页时写入一次。
 // 11 月 10 日的记录曾被旧版页面缓存错误覆盖，因此本版会在每台设备上
 // 仅同步一次“家长最终确认”的数据，不影响之后手动录入的日期。
-const CORRECTION_SYNC_VERSION='2026-11-10-final';
+const CORRECTION_SYNC_VERSION='2026-11-10-final-v2';
 const SEEDED_ERROR_RECORDS=[
   {date:'2026-11-09',errors:['holiday','postcard','singer','forest','cheese','collect','exercise','trousers','mountain']},
   {date:'2026-11-10',errors:['collect','dress','phone','whose','chorus','postcard','mountain','forest','delicious','leaves','exercise']}
 ];
 function seedKnownErrors(){
+  // 早期测试版曾把 11 月 4/5 日的示例计划保存到手机浏览器。
+  // 它们不是孩子的真实学习记录；若本机尚没有 11 月 9 或 10 日的确认记录，
+  // 自动移除这批旧示例，再写入家长已经确认过的真实数据。
   let changed=false;
+  const hasVerifiedRecord=data.records.some(r=>r.date==='2026-11-09'||r.date==='2026-11-10');
+  if(!hasVerifiedRecord&&data.records.length){
+    data.records=[];
+    data.wordState={};
+    data.tests={};
+    changed=true;
+  }
   SEEDED_ERROR_RECORDS.forEach(seed=>{
     const plan=masterPlanFor(seed.date); if(!plan?.words?.length)return;
     const next=masterPlanFor(plus(seed.date,1));
