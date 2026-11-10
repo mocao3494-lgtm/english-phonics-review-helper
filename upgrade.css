@@ -13,3 +13,13 @@
 .plan-loader .help{margin:8px 0 0}.master-focus{padding:9px 10px;background:#eef7ff;border-left:5px solid #3176ac;border-radius:7px;line-height:1.65}
 @media(max-width:620px){.daily-print table{font-size:.82rem}.daily-print th,.daily-print td{padding:5px}.primary.compact{width:100%}}
 @media print{body{background:#fff}.daily-print{font-size:12pt}.daily-print h3{font-size:15pt;break-after:avoid}.daily-print table{page-break-inside:avoid}.daily-print .story-en{page-break-inside:avoid}}
+
+/* 扫码批改与家长加词：手机上先勾选，再保存，不需要逐个重新输入。 */
+.correction-box{margin:14px 0 8px;padding:13px;border:2px solid #9dcfc0;border-radius:11px;background:#f4fbf8}
+.correction-box h3{margin:0 0 5px;color:#155346;font-size:1.05rem}.correction-box .help{margin-bottom:8px}
+.correction-words{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:345px;overflow:auto;padding:2px}
+.correction-choice{display:flex;align-items:flex-start;gap:7px;margin:0!important;padding:7px 8px;border:1px solid #c8ded6;border-radius:8px;background:#fff;font-weight:400;line-height:1.25}
+.correction-choice input{width:18px;height:18px;min-width:18px;margin:0}.correction-choice b{color:#155346}.correction-choice small{display:block;margin-top:3px;color:#58716a;font-size:12px}
+@media(max-width:560px){.correction-words{grid-template-columns:1fr;max-height:310px}.correction-choice{padding:9px}}
+@media print{.correction-box{display:none}}
+
