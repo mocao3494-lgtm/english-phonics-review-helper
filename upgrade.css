@@ -15,6 +15,11 @@
 @media print{body{background:#fff}.daily-print{font-size:12pt}.daily-print h3{font-size:15pt;break-after:avoid}.daily-print table{page-break-inside:avoid}.daily-print .story-en{page-break-inside:avoid}}
 
 /* 扫码批改与家长加词：手机上先勾选，再保存，不需要逐个重新输入。 */
+.today-words{margin:14px 0;padding:15px;border-radius:12px;background:#edf8f3;border:1px solid #b7dccd}
+.today-words .eyebrow{margin:0;color:#52766b;font-size:.9rem;font-weight:700}.today-words h2{margin:4px 0 10px;color:#155346;font-size:1.32rem}
+.word-chips{display:flex;flex-wrap:wrap;gap:8px}.word-chip{display:inline-block;padding:8px 10px;border-radius:8px;background:#fff;color:#174d42;font-size:1.08rem;border:1px solid #c6e1d6}.word-chip b{color:#b42318}.today-focus{margin:11px 0 0;line-height:1.55;color:#355f54}
+.data-only{display:none!important}.optional-input{margin-top:14px;padding-top:10px;border-top:1px dashed #a9c9bd}.optional-input summary{cursor:pointer;color:#416a5f;font-weight:700}.optional-input label{margin-top:12px}
+.advanced-card{display:none}.advanced-card.shown{display:block}.more-tools{display:block;margin:12px auto 20px}
 .correction-box{margin:14px 0 8px;padding:13px;border:2px solid #9dcfc0;border-radius:11px;background:#f4fbf8}
 .correction-box h3{margin:0 0 5px;color:#155346;font-size:1.05rem}.correction-box .help{margin-bottom:8px}
 .correction-words{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:345px;overflow:auto;padding:2px}
