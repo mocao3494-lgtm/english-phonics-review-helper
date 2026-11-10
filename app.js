@@ -61,7 +61,7 @@ const BASE_REVIEW=['dress','shirt','skirt','shorts','boots','prepare','holiday',
 const POS_INFO={
   dress:'n.&v.',shirt:'n.',skirt:'n.',shorts:'n.',boots:'n.',photo:'n.',show:'n.&v.',model:'n.',singer:'n.',asleep:'adj.',
   grass:'n.',ground:'n.',lake:'n.',leaf:'n.',leaves:'n.',field:'n.',tractor:'n.',awake:'adj.',pretty:'adj.',naughty:'adj.',
-  prepare:'v.',holiday:'n.',important:'adj.',exercise:'n.&v.',television:'n.',phone:'n.',close:'adj.&v.',bone:'n.',seek:'v.',between:'prep.&adv.',stretch:'v.',trousers:'n.',bounce:'v.',point:'n.&v.',touch:'v.',forest:'n.',cheese:'n.',collect:'v.',mountain:'n.',
+  prepare:'v.',holiday:'n.',important:'adj.',exercise:'n.&v.',television:'n.',phone:'n.',close:'adj.&v.',bone:'n.',seek:'v.',between:'prep.&adv.',stretch:'v.',trousers:'n.',bounce:'v.',point:'n.&v.',touch:'v.',forest:'n.',cheese:'n.',collect:'v.',mountain:'n.',whose:'pron.',chorus:'n.',delicious:'adj.',
   'in front of':'prep.', 'come from':'phr.', 'pick up':'phr.', 'listen to':'phr.', 'bus stop':'n.', 'sun cream':'n.',sunglasses:'n.',postcard:'n.',armchair:'n.',painting:'n.',muscle:'n.',clothes:'n.',sausage:'n.',difficult:'adj.',remember:'v.',practise:'v.',phrase:'n.', 'photo album':'n.',tidy:'adj.&v.',hockey:'n.'
 };
 const SOUNDS=[
@@ -73,7 +73,7 @@ const SOUNDS=[
 const WORD_INFO={
   dress:['连衣裙；穿衣；打扮','/dres/','dr + e + ss'],shirt:['衬衫','/ʃɜːt/','sh + ir + t'],skirt:['裙子','/skɜːt/','sk + ir + t'],shorts:['短裤；短裙','/ʃɔːts/','sh + or + t + s'],boots:['靴子','/buːts/','oo + t + s'],
   photo:['照片','/ˈfəʊtəʊ/','ph + o + to'],show:['展示；表演','/ʃəʊ/','sh + ow'],model:['模型；模特','/ˈmɒdəl/','o（短元音）+ el'],singer:['歌手','/ˈsɪŋə(r)/','sing + er'],asleep:['睡着的','/əˈsliːp/','a + sleep（ee）'],
-  prepare:['准备','/prɪˈpeə(r)/','pre + pare'],holiday:['假期；节日','/ˈhɒlədeɪ/','hol + i + day（ay）'],important:['重要的','/ɪmˈpɔːtənt/','im + por + tant'],exercise:['练习；锻炼','/ˈeksəsaɪz/','ex + er + cise'],television:['电视；电视机','/ˈtelɪvɪʒn/','tel + e + vi + sion'],phone:['电话','/fəʊn/','ph + o_e'],close:['关闭的；关闭','/kləʊz/','cl + o_e'],bone:['骨头','/bəʊn/','o_e'],seek:['寻找；追求','/siːk/','ee'],between:['在……之间','/bɪˈtwiːn/','be + tween（ee）'],stretch:['拉伸；伸展','/stretʃ/','str + e + tch'],trousers:['裤子','/ˈtraʊzəz/','tr + ou + s + ers'],bounce:['弹跳','/baʊns/','ou + nce'],point:['点；分数','/pɔɪnt/','oi + nt'],touch:['触摸','/tʌtʃ/','ou + tch'],forest:['森林','/ˈfɒrɪst/','for + est'],cheese:['奶酪','/tʃiːz/','ch + ee + se'],collect:['收集；收取','/kəˈlekt/','col + lect'],mountain:['山','/ˈmaʊntɪn/','moun + tain'],
+  prepare:['准备','/prɪˈpeə(r)/','pre + pare'],holiday:['假期；节日','/ˈhɒlədeɪ/','hol + i + day（ay）'],important:['重要的','/ɪmˈpɔːtənt/','im + por + tant'],exercise:['练习；锻炼','/ˈeksəsaɪz/','ex + er + cise'],television:['电视；电视机','/ˈtelɪvɪʒn/','tel + e + vi + sion'],phone:['电话','/fəʊn/','ph + o_e'],close:['关闭的；关闭','/kləʊz/','cl + o_e'],bone:['骨头','/bəʊn/','o_e'],seek:['寻找；追求','/siːk/','ee'],between:['在……之间','/bɪˈtwiːn/','be + tween（ee）'],stretch:['拉伸；伸展','/stretʃ/','str + e + tch'],trousers:['裤子','/ˈtraʊzəz/','tr + ou + s + ers'],bounce:['弹跳','/baʊns/','ou + nce'],point:['点；分数','/pɔɪnt/','oi + nt'],touch:['触摸','/tʌtʃ/','ou + tch'],forest:['森林','/ˈfɒrɪst/','for + est'],cheese:['奶酪','/tʃiːz/','ch + ee + se'],collect:['收集；收取','/kəˈlekt/','col + lect'],mountain:['山','/ˈmaʊntən/','moun + tain'],whose:['谁的','/huːz/','wh + ose'],chorus:['合唱','/ˈkɔːrəs/','chor + us'],delicious:['美味的；可口的','/dɪˈlɪʃəs/','de + li + cious'],
   'in front of':['在……前面','/ɪn frʌnt əv/','短语：in + front + of'],'come from':['来自……','/kʌm frəm/','短语：come + from'],'pick up':['捡起','/pɪk ʌp/','短语：pick + up'],'listen to':['（注意地）听；倾听','/ˈlɪsn tuː/','短语：listen + to'],'bus stop':['公交汽车站','/ˈbʌs stɒp/','复合词：bus + stop'],'sun cream':['防晒霜','/ˈsʌn kriːm/','复合词：sun + cream'],'sunglasses':['太阳镜','/ˈsʌnɡlɑːsɪz/','复合词：sun + glasses'],'postcard':['明信片','/ˈpəʊstkɑːd/','复合词：post + card'],'armchair':['单人沙发；扶手椅','/ˈɑːmtʃeə(r)/','复合词：arm + chair'],'photo album':['相簿','/ˈfəʊtəʊ ˌælbəm/','短语：photo + album'],painting:['（正在）绘画','/ˈpeɪntɪŋ/','ai + nt + ing'],muscle:['肌肉','/ˈmʌsl/','不规则视觉词'],clothes:['衣服','/kləʊðz/','cl + o + th + es'],sausage:['香肠','/ˈsɒsɪdʒ/','au（例外）+ age'],difficult:['困难的','/ˈdɪfɪkəlt/','dif + fi + cult'],remember:['记得；回忆起','/rɪˈmembə(r)/','re + mem + ber'],practise:['练习','/ˈpræktɪs/','prac + tise'],phrase:['短语','/freɪz/','ph + r + a_e'],tidy:['整洁的；整理','/ˈtaɪdi/','i + dy'],hockey:['曲棍球；冰上曲棍球','/ˈhɒki/','ho + ckey']
 };
 const RULE_DETAILS={
@@ -113,33 +113,27 @@ function rebuildWordState(){
   });
   data.wordState=state;return state;
 }
-// 家长已经提供的 11 月 9 日批改结果。首次打开新版网页时写入一次，
-// 让 11 月 10 日起的“次日复习”有真实来源；同日期已有记录时绝不覆盖。
-const SEEDED_ERROR_DATE='2026-11-09';
-const SEEDED_ERRORS=['holiday','postcard','singer','forest','cheese','collect','exercise','trousers','mountain'];
+// 家长已确认的历史批改结果。首次打开新版网页时写入一次，
+// 让次日复习有真实来源；同日期已有记录时绝不覆盖。
+const SEEDED_ERROR_RECORDS=[
+  {date:'2026-11-09',errors:['holiday','postcard','singer','forest','cheese','collect','exercise','trousers','mountain']},
+  {date:'2026-11-10',errors:['collect','dress','phone','whose','chorus','postcard','mountain','forest','delicious','leaves','exercise']}
+];
 function seedKnownErrors(){
-  if(data.records.some(r=>r.date===SEEDED_ERROR_DATE))return;
-  const plan=masterPlanFor(SEEDED_ERROR_DATE); if(!plan?.words?.length)return;
-  const next=masterPlanFor(plus(SEEDED_ERROR_DATE,1));
-  const newWords=plan.words.map(x=>norm(x.word));
-  const errors=SEEDED_ERRORS.map(norm);
-  const record={
-    date:SEEDED_ERROR_DATE,
-    newWords,
-    errors,
-    nextNewWords:(next?.words||[]).map(x=>norm(x.word)),
-    newItems:plan.words,
-    errorItems:errors.map(word=>({word})),
-    nextNewItems:next?.words||[],
-    reviewedWords:[...new Set([...newWords,...errors])],
-    khan:'',
-    masterFocus:plan.focus||'',
-    seed:true
-  };
-  data.records.push(record);
+  let changed=false;
+  SEEDED_ERROR_RECORDS.forEach(seed=>{
+    if(data.records.some(r=>r.date===seed.date))return;
+    const plan=masterPlanFor(seed.date); if(!plan?.words?.length)return;
+    const next=masterPlanFor(plus(seed.date,1));
+    const newWords=plan.words.map(x=>norm(x.word));
+    const errors=seed.errors.map(norm);
+    data.records.push({date:seed.date,newWords,errors,nextNewWords:(next?.words||[]).map(x=>norm(x.word)),newItems:plan.words,errorItems:errors.map(word=>({word})),nextNewItems:next?.words||[],reviewedWords:[...new Set([...newWords,...errors])],khan:'',masterFocus:plan.focus||'',seed:true});
+    changed=true;
+  });
+  if(!changed)return;
   data.records.sort((a,b)=>a.date.localeCompare(b.date));
   rebuildWordState();
-  record.nextPlan=buildPlan(plus(SEEDED_ERROR_DATE,1)).list;
+  data.records.filter(r=>r.seed).forEach(record=>record.nextPlan=buildPlan(plus(record.date,1)).list);
   save();
 }
 function dueWords(targetDate){
