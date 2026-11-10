@@ -42,6 +42,13 @@ const PATTERNS=[
 const MASTERY=['hall','touch','bone','rhino','floor','armchair','hat','diet','close','phrase','hockey'];
 // 已有教材中近期出现过的词，用于最初几天凑足40题；之后会逐步被真实历史记录取代。
 const BASE_REVIEW=['dress','shirt','skirt','shorts','boots','prepare','holiday','important','exercise','television','phone','close','bone','seek','between','stretch','trousers','bounce','point','touch','in front of','come from','pick up','listen to','bus stop','sun cream','sunglasses','postcard','armchair','painting','muscle','clothes','sausage','difficult','remember','practise','phrase','photo album','tidy','hockey'];
+// 默写纸需要词性。未能可靠判断的词性留空，宁可由教材补充，也不把错误词性教给孩子。
+const POS_INFO={
+  dress:'n.&v.',shirt:'n.',skirt:'n.',shorts:'n.',boots:'n.',photo:'n.',show:'n.&v.',model:'n.',singer:'n.',asleep:'adj.',
+  grass:'n.',ground:'n.',lake:'n.',leaf:'n.',leaves:'n.',field:'n.',tractor:'n.',awake:'adj.',pretty:'adj.',naughty:'adj.',
+  prepare:'v.',holiday:'n.',important:'adj.',exercise:'n.&v.',television:'n.',phone:'n.',close:'adj.&v.',bone:'n.',seek:'v.',between:'prep.&adv.',stretch:'v.',trousers:'n.',bounce:'v.',point:'n.&v.',touch:'v.',
+  'in front of':'prep.', 'come from':'phr.', 'pick up':'phr.', 'listen to':'phr.', 'bus stop':'n.', 'sun cream':'n.',sunglasses:'n.',postcard:'n.',armchair:'n.',painting:'n.',muscle:'n.',clothes:'n.',sausage:'n.',difficult:'adj.',remember:'v.',practise:'v.',phrase:'n.', 'photo album':'n.',tidy:'adj.&v.',hockey:'n.'
+};
 const SOUNDS=[
 ['规则地图：元音','oa / ow','/əʊ/','boat / snow','常见长 o；ow 在 cow 中读 /aʊ/。美式常把 /əʊ/ 写作 /oʊ/。'],['规则地图：元音','长 a','ai / ay / a_e / eigh','rain / day / name / eight','ai 多在词中，ay 多在词尾；eigh 属进阶拼写。'],['规则地图：元音','长 e','ee / ea / e_e / ey / ie','see / leaf / these / key / field','ea 有例外，如 bread；先连例词学习。'],['规则地图：元音','长 i','i_e / igh / y / ie / i+nd','kite / light / my / pie / find','igh 常读 /aɪ/；i+nd 作为常见词块辨认。'],['规则地图：元音','长 u','u_e / ue / ui / ew','cube / blue / fruit / new','可能读 /juː/ 或 /uː/，不要只背一条。'],['规则地图：元音','air are / ear ere','/eə/；/ɪə/或/eə/','hair / care；hear / here','进阶组合先连例词学习；不同口音会有差异。'],['规则地图：元音','au aw / al','/ɔː/','autumn / draw / ball','进阶组合；在错词出现后再专项练习。'],['规则地图：辅音','ph','/f/','phone / photo / phrase','ph 常读 /f/；当前截图没有专门 ph 卡，用纸笔规则卡巩固。'],['规则地图：音节','闭音节 / 开音节 / 复合词','短元音 / 长元音','bag / be；bus stop / postcard','辅音封住元音常为短音；元音在音节末常为长音；复合词先拆两块。'],
 ['Consonant Digraphs','ch','/tʃ/','chair, stretch','两个字母合成一个音；可汗页面会分别出现 Sounds: ch。'],['Consonant Digraphs','sh','/ʃ/','ship, shirt, shorts','两个字母合成“嘘”音；可汗页面会分别出现 Sounds: sh。'],['Consonant Digraphs','th','/θ/ 或 /ð/','thin / this','舌尖轻碰牙齿；同一组合有清浊两种常见音。'],['Consonant Digraphs','wh','/w/','what, when','常见读 /w/；who 是例外，单独记。'],['Consonant Blends','sk, st, sp, str, tr','各辅音都要发出来','skirt, stop, spring, stretch, trousers','不是一个新音，是几个辅音连续发；可汗示例含 st、sp、sk、sm、bl 等。'],['Final -e & Long Vowel Teams','a_e / i_e / o_e','/eɪ/ /aɪ/ /oʊ/','name / kite / bone','末尾 e 通常不发音，让前面的元音读字母音；可汗把它称为 The Magic E。'],['Final -e & Long Vowel Teams','ee / ea','/iː/','seek / leaf','长 e；ea 在少数词中例外，例如 bread。'],['Final -e & Long Vowel Teams','ai / ay','/eɪ/','rain / day','ai 常在词中，ay 常在词尾。'],['Final -e & Long Vowel Teams','oa / ow','/əʊ/（美式常写 /oʊ/）','boat / snow','oa 常读长 o；ow 在 cow 中读 /aʊ/，要和例词一起辨认。'],['Final -e & Long Vowel Teams','oo','/uː/ 或 /ʊ/','boots / book','同一组合有两种常见音，必须连例词一起记。'],['Final -e & Long Vowel Teams','ou / oi','/aʊ/ 或 /ʌ/；/ɔɪ/','bounce / touch；point','ou 有多种音；oi 常读 /ɔɪ/。'],['r-Controlled Vowels','ar / or / er ir ur','/ɑr/ /ɔr/ /ɜr/','car / short / shirt','r 会改变前面元音；可汗课程标题直接列出 ar or er ir ur。'],['Inflectional Endings','-ing / -ed / -s -es','/ɪŋ/；/t/ /d/ /ɪd/；/s/ /z/ /ɪz/','painting / jumped / boots','先写词根再加词尾；词尾发音由前一个音决定。']
@@ -105,19 +112,39 @@ function ruleOf(w){
   if(word.split(/[ -]/).length>1||word.length>=8) ids.push('multisyllable');
   return [...new Set(ids)];
 }
-function buildPlan(targetDate){const due=dueWords(targetDate), counts=allErrorCounts(), state=rebuildWordState(); const newest=data.records.at(-1)||{newWords:[],errors:[],nextNewWords:[]};
-  let list=[], added=new Set(); const add=(word,tag)=>{word=norm(word);if(word&&!added.has(word)&&list.length<40){list.push({word,tag});added.add(word)}};
-  // The next day’s fixed five new words always come first; parent enters them when saving today.
-  (newest.nextNewWords||[]).slice(0,5).forEach(w=>add(w,'明日新词'));
-  // 到期未复习的词会一直保留在队列，直到实际默写一次；不会因为当天超过40题而丢失。
-  Object.entries(state).filter(([,s])=>s.nextDue<=targetDate).sort((a,b)=>a[1].nextDue.localeCompare(b[1].nextDue)||b[1].errors-a[1].errors).forEach(([w,s])=>add(w,s.errors?'错词优先':'间隔复习'));
-  Object.entries(counts).filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]).forEach(([w])=>add(w,'高频错词'));
-  // Add rule-linked words that have appeared before, then mastered check words.
-  const all=[...new Set(data.records.flatMap(entryWords))]; all.filter(w=>ruleOf(w).length).forEach(w=>add(w,'规律词'));
+function scheduledWords(targetDate){
+  const fixed=masterPlanFor(targetDate);
+  if(fixed?.words?.length)return fixed.words.slice(0,5).map(x=>norm(x.word));
+  // 周末默认只做总复习；周一至周五若家长尚未建立总表，才沿用手动录入的下一批新词。
+  const day=new Date(targetDate+'T12:00:00').getDay();
+  if(day===0||day===6)return [];
+  const latest=data.records.at(-1);
+  return (latest?.nextNewWords||[]).slice(0,5).map(norm);
+}
+function stableShuffle(items,seedText){
+  let seed=[...seedText].reduce((n,c)=>((n*31)+c.charCodeAt(0))>>>0,17);
+  const next=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+  const copy=[...items]; for(let i=copy.length-1;i>0;i--){const j=Math.floor(next()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]];} return copy;
+}
+function buildPlan(targetDate){
+  const due=dueWords(targetDate),counts=allErrorCounts(),state=rebuildWordState();
+  let list=[],added=new Set(); const add=(word,tag)=>{word=norm(word);if(word&&!added.has(word)&&list.length<40){list.push({word,tag});added.add(word)}};
+  // 1. 总表日期优先：每天固定5个新词绝不因错词或排序而消失。
+  scheduledWords(targetDate).forEach(w=>add(w,'今日新词·必默'));
+  // 2. 错词先按“次日→第3→第7→第14→第30天”回归；错得越多，越靠前进入候选池。
+  Object.entries(state).filter(([,s])=>s.nextDue<=targetDate&&s.errors>0)
+    .sort((a,b)=>a[1].nextDue.localeCompare(b[1].nextDue)||b[1].errors-a[1].errors).forEach(([w,s])=>add(w,`错词曲线·第${Math.min(s.stage+1,5)}轮`));
+  Object.entries(counts).filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]).forEach(([w,n])=>add(w,`高频错词·${n}次`));
+  // 3. 已学但目前无错的词，仍按曲线回归；这样“软件显示掌握”也会被抽查。
+  Object.entries(state).filter(([,s])=>s.nextDue<=targetDate&&s.errors===0)
+    .sort((a,b)=>a[1].nextDue.localeCompare(b[1].nextDue)).forEach(([w])=>add(w,'已学曲线复习'));
+  const focus=masterPlanFor(targetDate)?.focus||'';
+  const all=[...new Set(data.records.flatMap(entryWords))];
+  all.filter(w=>ruleOf(w).some(id=>planRuleIds(focus).includes(id))).forEach(w=>add(w,'同规律迁移'));
   MASTERY.forEach(w=>add(w,'已掌握抽查'));
-  // 初始词库只用于把早期作业补足40题；所有以后录入、实际默写过的词优先按曲线复现。
   BASE_REVIEW.forEach(w=>add(w,'基础库抽查'));
-  return {list,due};
+  // 孩子看到的默写顺序每次固定打乱；家长网页预览仍能看到答案与来源。
+  return {list:stableShuffle(list,targetDate),due};
 }
 function weakness(){
   const counts={}, recent={};
@@ -126,13 +153,17 @@ function weakness(){
   lastSeven.forEach(r=>(r.errors||[]).forEach(w=>ruleOf(w).forEach(id=>recent[id]=(recent[id]||0)+1)));
   return PATTERNS.map(p=>({...p,count:counts[p.id]||0,recent:recent[p.id]||0,priority:(recent[p.id]||0)*3+(counts[p.id]||0)})).filter(p=>p.count).sort((a,b)=>b.priority-a.priority)
 }
-function khanRecommendation(ws){const t=data.tests||{}; const has=t.combo!==''&&t.combo!==undefined; const ruleFail=(has&&+t.combo<8)||(+t.decode<8&&t.decode!==undefined&&t.decode!=='')||(+t.magic<3&&t.magic!==undefined&&t.magic!=='')||(+t.syllable<4&&t.syllable!==undefined&&t.syllable!=='');
-  const top=ws[0]; if(ruleFail){return {title:'先补规则，不进入 Practice',course:top?.khan||'Final -e & Long Vowel Teams',card:'Basic 或 Main',text:'规则检验未达标，说明“会写见过的词”不等于掌握规律。先完成对应 Basic（基础支持）或 Main（主课），然后做陌生词读写，不要先刷 Practice。'}}
+function khanRecommendation(ws,focus=''){const t=data.tests||{}; const has=t.combo!==''&&t.combo!==undefined; const ruleFail=(has&&+t.combo<8)||(+t.decode<8&&t.decode!==undefined&&t.decode!=='')||(+t.magic<3&&t.magic!==undefined&&t.magic!=='')||(+t.syllable<4&&t.syllable!==undefined&&t.syllable!=='');
+  const focusIds=planRuleIds(focus); const focusRule=PATTERNS.find(p=>focusIds.includes(p.id));
+  const top=ws.find(w=>focusIds.includes(w.id)&&w.recent>0)||ws[0]||focusRule;
+  const syncNote=focusRule?`今天总表的重点还包括“${focusRule.name}”，完成本课后请在当天新词里圈出这个组合。`:'';
+  if(ruleFail){return {title:'先补规则，不进入 Practice',course:top?.khan||'Final -e & Long Vowel Teams',card:'Basic 或 Main',text:`规则检验未达标，说明“会写见过的词”不等于掌握规律。先完成对应 Basic（基础支持）或 Main（主课），然后做陌生词读写，不要先刷 Practice。${syncNote}`}}
   if(top?.id==='ph')return {title:'先做 ph 纸笔规则卡',course:'纸笔规则卡',card:'不需要在可汗里搜索 ph 专题',text:'您截图中的可汗课程没有明确的 ph 专题。先用 phone / photo / phrase 做“看 ph—读 /f/—遮住书写”；可汗当天改做 Nonsense Words 或已安排的主课即可。'};
-  if(top&&top.count>=3)return {title:'主课后做一轮练习',course:top.khan,card:'Main → Practice 1',text:`${top.name}错误较集中。先 Main（主课），能口头说出规律并完成陌生词读写后，再做 Practice 1（第一轮练习）。`};
+  if(top&&top.count>=3)return {title:'主课后做一轮练习',course:top.khan,card:'Main → Practice 1',text:`${top.name}错误较集中。先 Main（主课），能口头说出规律并完成陌生词读写后，再做 Practice 1（第一轮练习）。${syncNote}`};
+  if(focusRule)return {title:'跟当天新词同步学规则',course:focusRule.khan,card:'Main',text:`今天先围绕${focusRule.name}做一张 Main（主课）卡，再从新词中找同一组合。${syncNote}`};
   return {title:'规则课短学 + 纸笔主练',course:'1-Syllable & 2-Syllable Words',card:'Main',text:'当前没有明显规则性薄弱项，建议每天只做1张主课卡，其余时间用于纸笔错词间隔复习。'};
 }
-function currentPlan(){const last=data.records.at(-1);const target=last?plus(last.date,1):iso(today);const computed=buildPlan(target);return {target,list:(last?.nextPlan?.length?last.nextPlan:computed.list)};}
+function currentPlan(){const last=data.records.at(-1);const target=last?plus(last.date,1):iso(today);return {target,list:buildPlan(target).list};}
 function autoChecks(ws){
   const pick=ws.slice(0,2); if(!pick.length)return ['本周先录入至少一次错词；系统会按错误规律自动出检验题。','不录入错误时，也请周末从已掌握词随机抽10个，避免只记住近期词。'];
   const q=[];pick.forEach(w=>{
@@ -149,9 +180,18 @@ function autoChecks(ws){
 }
 function itemFor(word, metas=[]){
   const own=metas.find(x=>norm(x.word)===norm(word))||{};
+  const planned=masterWordInfo(word);
   const known=WORD_INFO[norm(word)]||[];
   const ids=ruleOf(word);
-  return {word:norm(word),gloss:own.gloss||known[0]||'请按教材核对中文',ipa:own.ipa||known[1]||'请按教材核对音标',chunk:known[2]||ids.map(id=>PATTERNS.find(p=>p.id===id)?.name).join('；')||'先圈元音/辅音词块'};
+  return {word:norm(word),gloss:own.gloss||planned.cn||known[0]||'请按教材核对中文',ipa:own.ipa||planned.ipa||known[1]||'请按教材核对音标',pos:own.pos||POS_INFO[norm(word)]||'',chunk:planned.chunk||known[2]||ids.map(id=>PATTERNS.find(p=>p.id===id)?.name).join('；')||'先圈元音/辅音词块'};
+}
+function masterWordInfo(word){
+  const target=norm(word);
+  for(const day of (window.MASTER_DAILY_PLAN||[])){
+    const hit=(day.words||[]).find(x=>norm(x.word)===target);
+    if(hit)return hit;
+  }
+  return {};
 }
 function dateLabel(date){const d=new Date(date+'T12:00:00');return `${date}（${WEEK[d.getDay()]}）`}
 function dailyRules(record){
@@ -170,28 +210,33 @@ function reviewForDaily(record){
   return [...new Set([...direct,...extra])].filter(w=>!record.newWords.includes(w)).slice(0,10);
 }
 function storyFor(record){
-  const w=(record.newWords||[]); const hero='Leo';
-  const a=w[0]||'photo',b=w[1]||'show',c=w[2]||'model',d=w[3]||'boots',e=w[4]||'asleep';
-  const titles=['午夜赛车任务','迷你车库的密码','山路上的蓝色旗帜','丛林维修站','雨天的秘密地图'];
-  const n=data.records.indexOf(record); const title=titles[(n<0?0:n)%titles.length];
-  const en=`${hero} found a ${a} in his little car. The ${b} on the photo led him to a hidden ${c}. He put on his ${d}, checked the map, and drove slowly. At the end, the tired helper was ${e}, but the team finished the mission.`;
-  const cn=`小虎机 Leo 在小汽车里发现了一张${a}。照片上的${b}带他找到一个藏起来的${c}。他穿上${d}，检查地图，慢慢开车。最后，疲惫的小帮手已经${e}，但小队还是完成了任务。`;
-  return {title,en,cn,questions:[`1. What did ${hero} find in his car?`, '2. 圈出今天新词中你能按规则读出的一个词。', '3. 读完后，用中文说一说他们怎样完成任务。']};
+  const w=(record.newWords||[]); const a=w[0]||'photo',b=w[1]||'show',c=w[2]||'model',d=w[3]||'singer',e=w[4]||'asleep';
+  const review=reviewForDaily(record).slice(0,3);
+  // 前两天与目前总表完全同步；后续继续用同一条“少年赛车队”主线，而不是重复同一种句子。
+  if(record.date==='2026-11-09')return {title:'赛车队的第一张线索',en:'Leo took a photo of a tiny model car at the school show. A young singer smiled at him. After the show, the singer was asleep beside the car. Leo put the photo in his Adventure Notebook.',cn:'Leo 在学校展示会上拍了一辆小模型车的照片。一位年轻歌手朝他微笑。展示会结束后，歌手在车旁睡着了。Leo 把照片放进了《冒险笔记》。',review,questions:['1. What did Leo take at the school show?','2. Who was asleep beside the car?','3. 圈出 ph、sh、ee、sl 中的两个组合，说出读音。']};
+  if(record.date==='2026-11-10')return {title:'湖边的隐藏赛道',en:'After school, Leo drove his small model car across the grass. The ground near the lake was soft. A leaf landed on the map, and two leaves pointed to a hidden path. Leo remembered the photo and called the singer. Together, they found the key to the next race.',cn:'放学后，Leo 驾驶小模型车穿过草地。湖边的地面很软。一片叶子落在地图上，两片叶子指向一条隐藏的小路。Leo 想起那张照片，叫来了歌手。他们一起找到了下一场比赛的钥匙。',review,questions:['1. Where was the ground soft?','2. What pointed to the hidden path?','3. 圈出 gr、ou、a_e、ea 和词尾 -s，任选两个说出读音。']};
+  const plots=[
+    {title:'拖拉机的晨光任务',en:`At dawn, Leo saw a ${a} near the field. It had to cross a ${b} before the race. His friend was ${c}, but the map was ${d}. A ${e} sound came from the old gate. Leo followed it and found a safe road.`,cn:`清晨，Leo 在田野旁看见了一个${a}。它必须穿过${b}才能到达赛道。他的朋友${c}，但地图上有${d}。旧门后传来${e}的声音。Leo 顺着声音找到了安全的路。`},
+    {title:'车库里的新任务',en:`Leo put the ${a} in his race bag. On the way, he found ${b}. The team used ${c} to solve a small problem. Then ${d} gave Leo a clue about ${e}. The next part of the adventure began.`,cn:`Leo 把${a}放进赛车包。路上他发现了${b}。小队用${c}解决了一个小问题。随后，${d}给了 Leo 关于${e}的线索。冒险的下一段开始了。`},
+    {title:'终点前的选择',en:`The road was quiet when Leo checked the ${a}. He and Max saw ${b} near ${c}. They did not rush. ${d} helped them read the signs, and ${e} showed the final turn. The team reached the finish line together.`,cn:`Leo 查看${a}时，路上很安静。他和 Max 在${c}附近看到了${b}。他们没有着急。${d}帮助他们读懂路标，${e}指向最后一个转弯。小队一起到达终点。`}
+  ];
+  const n=Math.max(0,data.records.findIndex(r=>r.date===record.date)); const plot=plots[n%plots.length];
+  return {title:plot.title,en:plot.en,cn:plot.cn,review,questions:['1. 用中文说说这次任务遇到了什么。','2. 找出今天的两个新词并读出来。','3. 找一处昨天词或错词，圈出其中的字母组合。']};
 }
 function dailyCardMarkup(record){
   // 旧错词再次进入复习时，继续带出家长已经录入的中文和音标。
   const metas=data.records.flatMap(r=>[...(r.newItems||[]),...(r.errorItems||[]),...(r.nextNewItems||[])]);
   const newItems=(record.newWords||[]).map(w=>itemFor(w,metas));
   const reviewItems=reviewForDaily(record).map(w=>itemFor(w,metas));
-  const rules=dailyRules(record), rec=khanRecommendation(weakness()), story=storyFor(record);
   const masterFocus=record.masterFocus||masterPlanFor(record.date)?.focus||'';
+  const rules=dailyRules(record), rec=khanRecommendation(weakness(),masterFocus), story=storyFor(record);
   const curve=CURVE.map(n=>plus(record.date,n)).join('、');
-  return `<div class="daily-print"><div class="daily-top"><b>日期：${dateLabel(record.date)}</b><span>姓名：____________</span></div>${masterFocus?`<p class="master-focus"><b>总表当天重点：</b>${escapeHtml(masterFocus)}。网页会先结合这个重点，再结合累计错词决定今日练习。</p>`:''}<h3>① 今天 5 个新词：先读词块，再写单词</h3><table class="daily-table"><thead><tr><th>英文</th><th>中文</th><th>音标</th><th>词块/规则</th><th>默写一遍</th></tr></thead><tbody>${newItems.map(x=>`<tr><td><b>${escapeHtml(x.word)}</b></td><td>${escapeHtml(x.gloss)}</td><td>${escapeHtml(x.ipa)}</td><td>${escapeHtml(x.chunk)}</td><td></td></tr>`).join('')}</tbody></table><h3>② 今天复习词：默写后圈出词块</h3><p class="review-words">${reviewItems.map((x,i)=>`${i+1}. ${escapeHtml(x.word)}（${escapeHtml(x.gloss)}）`).join('　')||'今天暂无历史复习词；明天开始会自动加入。'}</p><h3>③ 今天只学这 ${rules.length} 条规则</h3><ol class="rule-list daily-rules">${rules.map(r=>`<li><b>${escapeHtml(r.name)}</b>：${escapeHtml(r.detail)}</li>`).join('')}</ol><p class="red-tip">重点：孩子要能“圈组合 → 说音标/音素 → 读例词 → 写一个同规律陌生词”。只会默写见过的词，不等于会规则。</p><h3>④ 可汗学院（8–10 分钟）</h3><ol class="rule-list"><li>点 <b>Reading</b> → 右上角 <b>1st Grade</b> → 找 <b>${escapeHtml(rec.course)}</b>。</li><li>先点 <b>${escapeHtml(rec.card)}</b>。${escapeHtml(rec.text)}</li><li>完成后让孩子说出今天一个组合和对应读音；说不出，就做本页第③部分，不急着刷 Practice。</li></ol><h3>⑤ 冒险小阅读：《${escapeHtml(story.title)}》</h3><p class="story-en">${escapeHtml(story.en)}</p><p>${escapeHtml(story.cn)}</p><ol class="rule-list">${story.questions.map(q=>`<li>${escapeHtml(q)}</li>`).join('')}</ol><p class="curve-note">本日新词后续复习日期：<b>${curve}</b>。错词自动追加到次日，并继续按曲线出现。</p></div>`;
+  return `<div class="daily-print"><div class="daily-top"><b>日期：${dateLabel(record.date)}</b><span>姓名：____________</span></div>${masterFocus?`<p class="master-focus"><b>总表当天重点：</b>${escapeHtml(masterFocus)}。网页会先结合这个重点，再结合累计错词决定今日练习。</p>`:''}<h3>① 今天 5 个新词：先读词块，再写单词</h3><table class="daily-table"><thead><tr><th>英文</th><th>中文</th><th>音标</th><th>词块/规则</th><th>默写一遍</th></tr></thead><tbody>${newItems.map(x=>`<tr><td><b>${escapeHtml(x.word)}</b></td><td>${escapeHtml(x.gloss)}</td><td>${escapeHtml(x.ipa)}</td><td>${escapeHtml(x.chunk)}</td><td></td></tr>`).join('')}</tbody></table><h3>② 今天复习词：默写后圈出词块</h3><p class="review-words">${reviewItems.map((x,i)=>`${i+1}. ${escapeHtml(x.word)}（${escapeHtml(x.gloss)}）`).join('　')||'今天暂无历史复习词；明天开始会自动加入。'}</p><h3>③ 今天只学这 ${rules.length} 条规则</h3><ol class="rule-list daily-rules">${rules.map(r=>`<li><b>${escapeHtml(r.name)}</b>：${escapeHtml(r.detail)}</li>`).join('')}</ol><p class="red-tip">重点：孩子要能“圈组合 → 说音标/音素 → 读例词 → 写一个同规律陌生词”。只会默写见过的词，不等于会规则。</p><h3>④ 可汗学院（8–10 分钟）</h3><ol class="rule-list"><li>点 <b>Reading</b> → 右上角 <b>1st Grade</b> → 找 <b>${escapeHtml(rec.course)}</b>。</li><li>先点 <b>${escapeHtml(rec.card)}</b>。${escapeHtml(rec.text)}</li><li>完成后让孩子说出今天一个组合和对应读音；说不出，就做本页第③部分，不急着刷 Practice。</li></ol><h3>⑤ 冒险小阅读：《${escapeHtml(story.title)}》</h3><p class="story-en">${escapeHtml(story.en)}</p><p>${escapeHtml(story.cn)}</p><p class="curve-note"><b>本篇词汇：</b>今天新词 ${newItems.map(x=>escapeHtml(x.word)).join('、')}；复习词 ${story.review?.map(escapeHtml).join('、')||'无'}。</p><ol class="rule-list">${story.questions.map(q=>`<li>${escapeHtml(q)}</li>`).join('')}</ol><p class="curve-note">本日新词后续复习日期：<b>${curve}</b>。错词自动追加到次日，并继续按曲线出现。</p></div>`;
 }
 function worksheetHtml(title,body){return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#111;margin:18mm;font-size:12pt;line-height:1.6}h1{text-align:center;font-size:20pt}h2{font-size:15pt;border-bottom:1px solid #1c5e4f;padding-bottom:3px}h3{font-size:13pt;margin:14px 0 6px;color:#155346}table{border-collapse:collapse;width:100%;font-size:10.5pt}th,td{border:1px solid #333;padding:6px;vertical-align:top}th{background:#eaf4f0}.daily-top{display:flex;justify-content:space-between;border-bottom:1px solid #333;padding-bottom:6px}.daily-table td:last-child{height:30px}.review-words{padding:8px;background:#f4f8f5}.red-tip{color:#b00020;font-weight:bold;background:#fff1f1;padding:8px}.story-en{font-family:Arial,sans-serif}.curve-note{background:#fff6d9;padding:8px}@page{size:A4;margin:14mm}</style></head><body><h1>${escapeHtml(title)}</h1>${body}</body></html>`}
 function downloadDoc(name,html){const blob=new Blob(['\ufeff',html],{type:'application/msword;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
 function openPrint(title,body){const win=window.open('','_blank');if(!win){alert('浏览器阻止了新页面，请允许弹出窗口后再试，或改用“导出 WPS”。');return}win.document.write(worksheetHtml(title,body));win.document.close();win.focus();setTimeout(()=>win.print(),350)}
-function render(){const {target,list}=currentPlan(); const last=data.records.at(-1); const ws=weakness(); const rec=khanRecommendation(ws);
+function render(){const {target,list}=currentPlan(); const last=data.records.at(-1); const ws=weakness(); const targetFocus=masterPlanFor(target)?.focus||''; const rec=khanRecommendation(ws,targetFocus);
   if(last||Object.values(data.tests||{}).some(x=>x!=='')){['plan','analysis','khanPlan','checkPlan','weekend'].forEach(id=>$(id).classList.remove('hidden'));}
   if(last){$('dailyCard').classList.remove('hidden');$('dailyDate').textContent='（'+dateLabel(last.date)+'）';$('dailyCardContent').innerHTML=dailyCardMarkup(last);}
   else {$('dailyCard').classList.add('hidden');}
@@ -224,8 +269,14 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function exportWorksheet(){
   const {target,list}=currentPlan();
   if(!list.length){alert('请先保存一次“今天录入”，再导出作业。');return;}
-  const rows=list.map((x,i)=>`<tr><td>${i+1}</td><td>&nbsp;</td><td></td><td>${escapeHtml(x.word)}</td><td>${escapeHtml(x.tag||'')}</td></tr>`).join('');
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>英语默写作业</title><style>body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#111;margin:24px}h1{text-align:center;font-size:22px}p{font-size:13px}.meta{display:flex;justify-content:space-between;border-bottom:1px solid #333;padding-bottom:8px}table{border-collapse:collapse;width:100%;font-size:14px;margin-top:14px}th,td{border:1px solid #333;padding:7px;height:24px}th{background:#eaf4f0}.rule{background:#f7fbf9;padding:10px;margin-top:14px;line-height:1.7}@page{size:A4;margin:16mm}</style></head><body><h1>英语默写与拼读巩固作业</h1><div class="meta"><span>日期：${target}</span><span>姓名：__________________</span><span>得分：________</span></div><p><b>规则：</b>家长按中文或英文读词；孩子在“孩子书写”栏写出单词。写完后圈出词中的字母组合/词块，并在“错因”栏写：元音、组合、词尾、音节、空格或视觉词形。</p><table><thead><tr><th style="width:7%">序号</th><th style="width:35%">孩子书写</th><th style="width:24%">错因/订正</th><th style="width:22%">家长答案</th><th style="width:12%">来源</th></tr></thead><tbody>${rows}</tbody></table><div class="rule"><b>今日拼读自检：</b>从本页任选3个词，孩子必须能说出其中的字母组合或词块和读音；再由家长给1个同规律陌生词，能读写才算真正掌握。</div></body></html>`;
+  const metas=data.records.flatMap(r=>[...(r.newItems||[]),...(r.errorItems||[]),...(r.nextNewItems||[])]);
+  const chunks=[]; for(let i=0;i<list.length;i+=20)chunks.push(list.slice(i,i+20));
+  const pad=(arr,n)=>[...arr,...Array(Math.max(0,n-arr.length)).fill(null)];
+  const pages=chunks.map((part,pageIndex)=>{
+    const rows=pad(part,20).map((x,i)=>x?(()=>{const d=itemFor(x.word,metas);return `<tr><td>${pageIndex*20+i+1}</td><td class="write"></td><td>${escapeHtml(d.ipa)}</td><td>${escapeHtml(d.pos||'')}</td><td>${escapeHtml(d.gloss)}</td></tr>`})():`<tr><td>${pageIndex*20+i+1}</td><td class="write"></td><td></td><td></td><td></td></tr>`).join('');
+    return `<section class="paper"><header><div class="badge">ABC<br><small>拼读默写</small></div><div class="paper-title">英语默写</div><div class="fields"><div>用时________　得分________</div><div>班级________　姓名________</div></div></header><p class="tip">请根据“音标 / 中文”写出英文；完成后，口头圈说其中的字母组合和音素。</p><table><thead><tr><th>序号</th><th>英文</th><th>音标</th><th>词性</th><th>中文</th></tr></thead><tbody>${rows}</tbody></table><footer>日期：${target}　　第 ${pageIndex+1} / ${chunks.length} 页</footer></section>`;
+  }).join('');
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>英语默写作业</title><style>@page{size:A4 portrait;margin:10mm}*{box-sizing:border-box}body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#111;margin:0;font-size:10.5pt}.paper{min-height:277mm;page-break-after:always;break-after:page}.paper:last-child{page-break-after:auto;break-after:auto}header{height:25mm;display:grid;grid-template-columns:30mm 1fr 72mm;align-items:center}.badge{width:23mm;height:23mm;border:1.4px solid #222;border-radius:50%;text-align:center;padding-top:4mm;font:bold 12pt Arial;line-height:1.1}.badge small{font:6.5pt 'Microsoft YaHei'}.paper-title{text-align:center;font-size:19pt;font-weight:bold;letter-spacing:2px}.fields{font-size:10.5pt;line-height:1.9}.tip{margin:1.5mm 0 2mm;font-size:9.5pt}table{border-collapse:collapse;width:100%;table-layout:fixed}th,td{border:1px solid #222;text-align:center;vertical-align:middle;padding:1.5mm 1mm;height:11.4mm}th{font-weight:bold;height:9mm;background:#fff}th:nth-child(1),td:nth-child(1){width:7%}th:nth-child(2),td:nth-child(2){width:31%}th:nth-child(3),td:nth-child(3){width:25%}th:nth-child(4),td:nth-child(4){width:10%}th:nth-child(5),td:nth-child(5){width:27%}.write{background:#fff}footer{text-align:center;font-size:8.5pt;margin-top:2mm;color:#444}</style></head><body>${pages}</body></html>`;
   const blob=new Blob(['\ufeff',html],{type:'application/msword;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`英语默写作业_${target}.doc`;a.click();URL.revokeObjectURL(a.href);
 }
 function exportDailyWorksheet(){
