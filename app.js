@@ -12,16 +12,14 @@ function planRuleIds(focus=''){
   return [...new Set(pairs.filter(([key])=>focus.includes(key)).map(([,id])=>id))];
 }
 function updateMasterPlanHint(){
-  const plan=masterPlanFor($('studyDate').value);
+  const date=$('studyDate').value||iso(today), plan=masterPlanFor(date), next=masterPlanFor(plus(date,1));
   $('masterPlanHint').innerHTML=plan
-    ? `<b>总表已找到：</b>${escapeHtml(plan.date)} 的 5 个新词是 ${plan.words.map(x=>`<b>${escapeHtml(x.word)}</b>`).join('、')}。当天重点：${escapeHtml(plan.focus)}。点击上方按钮即可填入。`
-    : '这个日期不在当前总表的 81 个新词学习日中。可手动填写新词；周末可只填错词，做总复习。';
+    ? `<b>今天固定新词：</b>${plan.words.map(x=>`<b>${escapeHtml(x.word)}</b>`).join('、')}。<br><b>明天预告：</b>${next?next.words.map(x=>`<b>${escapeHtml(x.word)}</b>`).join('、'):'明天为复习日'}。<br>今天重点：${escapeHtml(plan.focus)}。您只需在下方填写今天的错词。`
+    : '今天是复习日：无需输入新词，只填写今天默写错误的词。';
 }
 function fillMasterPlan(){
   const date=$('studyDate').value||iso(today), plan=masterPlanFor(date);
-  if(!plan){alert('总表中没有这个日期的新词。周末请只录入错词；其他日期可手动填写。');return;}
-  const current=$('newWords').value.trim();
-  if(current && current!==formatItems(plan.words) && !confirm('这会把“今天5个新词”替换为总表中该日期的5个词。已经手动填写的内容会被覆盖，是否继续？'))return;
+  if(!plan){$('newWords').value='今天是复习日（没有固定新词）';$('nextNewWords').value='';updateMasterPlanHint();return;}
   $('newWords').value=formatItems(plan.words);
   const next=masterPlanFor(plus(date,1));
   $('nextNewWords').value=next?formatItems(next.words):'';
@@ -250,14 +248,15 @@ function render(){const {target,list}=currentPlan(); const last=data.records.at(
   $('soundCardContent').innerHTML=SOUNDS.map(s=>`<div class="sound"><small><b>${s[0]}</b></small><b>${s[1]}</b> <em>${s[2]}</em><small>例词：${s[3]}<br>${s[4]}</small></div>`).join('');
 }
 function saveRecord(){
-  const date=$('studyDate').value||iso(today),newItems=parseEntries($('newWords').value),errorItems=parseEntries($('errorWords').value),nextNewItems=parseEntries($('nextNewWords').value);
+  const date=$('studyDate').value||iso(today),master=masterPlanFor(date),nextMaster=masterPlanFor(plus(date,1));
+  // 新词不再由家长手输，始终以总表为准；家长每天只录入批改后的错误词。
+  const newItems=master?.words||[],errorItems=parseEntries($('errorWords').value),nextNewItems=nextMaster?.words||[];
   const newWords=newItems.map(x=>x.word),errors=errorItems.map(x=>x.word),nextNewWords=nextNewItems.map(x=>x.word);
   if(!newWords.length&&!errors.length){alert('请至少输入今天的新词或错词。');return}
   const previous=data.records.find(r=>plus(r.date,1)===date);
   // 若昨天已生成过今天的40词，表示这些词今天实际被默写，全部进入下一轮记忆曲线；若没有，至少追踪今天的5个新词。
   const reviewedWords=(previous?.nextPlan||[]).map(x=>typeof x==='string'?x:x.word);
   data.records=data.records.filter(r=>r.date!==date);
-  const master=masterPlanFor(date);
   const record={date,newWords,errors,nextNewWords,newItems,errorItems,nextNewItems,reviewedWords:reviewedWords.length?reviewedWords:newWords,khan:$('khanDone').value,masterFocus:master?.focus||''};
   data.records.push(record);data.records.sort((a,b)=>a.date.localeCompare(b.date));rebuildWordState();
   // 立即保存“明天的40词”；明天录入批改结果时系统就知道哪些词实际参与过默写。
@@ -290,15 +289,13 @@ function printDailyWorksheet(){
 function fill(){
   let now=iso(today); const first=(window.MASTER_DAILY_PLAN||[])[0]; if(!data.records.length&&first&&now<first.date)now=first.date; $('studyDate').value=now;
   const existing=data.records.find(r=>r.date===now), last=data.records.at(-1);
-  if(existing){$('newWords').value=formatItems(existing.newItems?.length?existing.newItems:existing.newWords);$('errorWords').value=formatItems(existing.errorItems?.length?existing.errorItems:existing.errors);$('nextNewWords').value=formatItems(existing.nextNewItems?.length?existing.nextNewItems:existing.nextNewWords);$('khanDone').value=existing.khan||'';}
-  else if(last&&plus(last.date,1)===now){$('newWords').value=(last.nextNewWords||[]).join('\n');$('nextNewWords').value='';}
-  else if(!data.records.length&&masterPlanFor(now)){fillMasterPlan();}
-  else if(!data.records.length)$('newWords').value='dress\nshirt\nskirt\nshorts\nboots';
+  if(existing){$('errorWords').value=formatItems(existing.errorItems?.length?existing.errorItems:existing.errors);$('khanDone').value=existing.khan||'';}
+  fillMasterPlan();
   const t=data.tests||{};$('comboScore').value=t.combo||'';$('decodeScore').value=t.decode||'';$('magicScore').value=t.magic||'';$('syllableScore').value=t.syllable||'';updateMasterPlanHint();render();
 }
 $('saveAndPlan').onclick=saveRecord;$('saveTest').onclick=saveTest;
 $('fillMasterPlan').onclick=fillMasterPlan;
-$('studyDate').onchange=updateMasterPlanHint;
+$('studyDate').onchange=()=>{fillMasterPlan();render();};
 $('exportWorksheet').onclick=exportWorksheet;
 $('exportDailyWorksheet').onclick=exportDailyWorksheet;
 $('printDailyWorksheet').onclick=printDailyWorksheet;

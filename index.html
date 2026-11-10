@@ -11,27 +11,27 @@
 <body>
   <header>
     <div class="brand"><span>字母拼读</span><strong>英语拼读每日打印助手</strong></div>
-    <p>每天只录入新词和错词；网页自动生成“新词＋复习＋拼读规则＋可汗＋故事阅读”的当天打印总表。</p>
+    <p>每天只输入默写错词；当天新词、复习词、拼读规则、可汗建议和故事阅读均由网页自动安排。</p>
   </header>
   <main>
     <section class="notice">数据只保存在本手机/浏览器。请定期点击“导出备份”；换手机后用“导入备份”恢复。</section>
 
     <section class="card input-card" id="entry">
       <h1>今天录入</h1>
-      <p class="help"><b>最简单的用法：</b>每天默写批改后填“今天5个新词”和“今天错词”，再点绿色按钮。网站会生成下一次40词清单和一张可直接打印的每日学习卡。所有词按次日、第3天、第7天、第14天、第30天复现；错得多的词会额外提前出现。</p>
+      <p class="help"><b>只做两件事：</b>确认日期 → 填写“今天默写错误词” → 点绿色按钮。今天与明天的新词由总表自动显示，其他词会按次日、第3天、第7天、第14天、第30天自动复现；错得多的词会额外提前出现。</p>
       <label>日期 <input id="studyDate" type="date" /></label>
       <div class="plan-loader">
-        <button type="button" class="secondary compact" id="fillMasterPlan">按总表自动填入当天 5 个新词</button>
-        <p class="help" id="masterPlanHint">选择日期后，可直接从“每日新词计划总表”载入当天的 5 个新词、中文、音标和组合提示。</p>
+        <button type="button" class="secondary compact" id="fillMasterPlan">重新载入今天与明天的新词</button>
+        <p class="help" id="masterPlanHint">网页会按总表自动显示今天和明天的 5 个新词。</p>
       </div>
-      <label>今天5个新词 <small>每行一个，或用英文逗号隔开。若方便，可写成：英文 | 中文 | 音标，例如 photo | 照片 | /ˈfəʊtəʊ/。</small>
-        <textarea id="newWords" rows="4" placeholder="dress&#10;shirt&#10;skirt&#10;shorts&#10;boots"></textarea>
+      <label>今天固定新词 <small>系统自动带入；只需让孩子学习，不用手动填写。</small>
+        <textarea id="newWords" rows="4" readonly aria-readonly="true"></textarea>
       </label>
       <label>今天默写错误词 <small>每行一个。可加中文/音标，例如：trousers | 裤子 | /ˈtraʊzəz/。只写英文也可以。</small>
         <textarea id="errorWords" rows="6" placeholder="例如：important | 重要的&#10;in front of | 在……前面"></textarea>
       </label>
-      <label>明天固定要学的5个新词 <small>每行一个。它们一定排在下一次40词的最前面；如还不知道，可暂不填，明天补填。</small>
-        <textarea id="nextNewWords" rows="4" placeholder="明天的5个新词，每行一个"></textarea>
+      <label>明天固定新词 <small>这是明天一定会学习、也会进入后续默写的 5 个词；仅供预览，无需填写。</small>
+        <textarea id="nextNewWords" rows="4" readonly aria-readonly="true"></textarea>
       </label>
       <label>今天孩子在可汗学院学习的主题 <small>可不填；若填，系统会记录进周末复盘。</small>
         <select id="khanDone">
@@ -114,6 +114,6 @@
   </main>
   <footer>每日流程：可汗规律课 8-10 分钟 → 新词词块预习 5 分钟 → 规律朗读迁移 5 分钟 → 默写 8-10 分钟 → 录入错词 3 分钟。</footer>
   <script src="./master-plan.js?v=20261110-2"></script>
-  <script src="./app.js?v=20261110-3"></script>
+  <script src="./app.js?v=20261110-4"></script>
 </body>
 </html>
