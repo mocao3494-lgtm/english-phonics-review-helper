@@ -113,8 +113,10 @@ function rebuildWordState(){
   });
   data.wordState=state;return state;
 }
-// 家长已确认的历史批改结果。首次打开新版网页时写入一次，
-// 让次日复习有真实来源；同日期已有记录时绝不覆盖。
+// 家长已确认的历史批改结果。首次打开新版网页时写入一次。
+// 11 月 10 日的记录曾被旧版页面缓存错误覆盖，因此本版会在每台设备上
+// 仅同步一次“家长最终确认”的数据，不影响之后手动录入的日期。
+const CORRECTION_SYNC_VERSION='2026-11-10-final';
 const SEEDED_ERROR_RECORDS=[
   {date:'2026-11-09',errors:['holiday','postcard','singer','forest','cheese','collect','exercise','trousers','mountain']},
   {date:'2026-11-10',errors:['collect','dress','phone','whose','chorus','postcard','mountain','forest','delicious','leaves','exercise']}
@@ -122,18 +124,27 @@ const SEEDED_ERROR_RECORDS=[
 function seedKnownErrors(){
   let changed=false;
   SEEDED_ERROR_RECORDS.forEach(seed=>{
-    if(data.records.some(r=>r.date===seed.date))return;
     const plan=masterPlanFor(seed.date); if(!plan?.words?.length)return;
     const next=masterPlanFor(plus(seed.date,1));
     const newWords=plan.words.map(x=>norm(x.word));
     const errors=seed.errors.map(norm);
-    data.records.push({date:seed.date,newWords,errors,nextNewWords:(next?.words||[]).map(x=>norm(x.word)),newItems:plan.words,errorItems:errors.map(word=>({word})),nextNewItems:next?.words||[],reviewedWords:[...new Set([...newWords,...errors])],khan:'',masterFocus:plan.focus||'',seed:true});
-    changed=true;
+    const old=data.records.find(r=>r.date===seed.date);
+    if(!old){
+      data.records.push({date:seed.date,newWords,errors,nextNewWords:(next?.words||[]).map(x=>norm(x.word)),newItems:plan.words,errorItems:errors.map(word=>({word})),nextNewItems:next?.words||[],reviewedWords:[...new Set([...newWords,...errors])],khan:'',masterFocus:plan.focus||'',seed:true});
+      changed=true;
+      return;
+    }
+    // 已存在的 11 月 10 日记录也必须改正为本次家长给出的 11 个错词。
+    if(seed.date==='2026-11-10'&&data.correctionSyncVersion!==CORRECTION_SYNC_VERSION){
+      Object.assign(old,{newWords,errors,nextNewWords:(next?.words||[]).map(x=>norm(x.word)),newItems:plan.words,errorItems:errors.map(word=>({word})),nextNewItems:next?.words||[],reviewedWords:[...new Set([...(old.reviewedWords||[]),...newWords,...errors])],masterFocus:plan.focus||old.masterFocus||'',syncedCorrection:CORRECTION_SYNC_VERSION});
+      changed=true;
+    }
   });
   if(!changed)return;
   data.records.sort((a,b)=>a.date.localeCompare(b.date));
   rebuildWordState();
-  data.records.filter(r=>r.seed).forEach(record=>record.nextPlan=buildPlan(plus(record.date,1)).list);
+  data.records.filter(r=>r.seed||r.date==='2026-11-10').forEach(record=>record.nextPlan=buildPlan(plus(record.date,1)).list);
+  data.correctionSyncVersion=CORRECTION_SYNC_VERSION;
   save();
 }
 function dueWords(targetDate){
