@@ -32,3 +32,6 @@
 .correction-choice input{width:18px;height:18px;min-width:18px;margin:0}.correction-choice b{color:#155346}.correction-choice small{display:block;margin-top:3px;color:#58716a;font-size:12px}
 @media(max-width:560px){.correction-words{grid-template-columns:1fr;max-height:310px}.correction-choice{padding:9px}.qr-access img{width:65px;height:65px}}
 @media print{.correction-box{display:none}}
+
+/* 学习记录管理：让家长可以回看、修正或删除误录日期。 */
+.history-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px dashed #b9d3c9}.history-row:last-child{border-bottom:0}.history-row b,.history-row span,.history-row small{display:block}.history-row span{margin-top:3px;color:#43685d;font-size:.9rem}.history-row small{margin-top:4px;color:#6c7f79;word-break:break-word}.history-actions{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end}.history-actions .compact{margin-top:0;padding:8px 10px;font-size:.88rem}@media(max-width:560px){.history-row{align-items:flex-start;flex-direction:column}.history-actions{width:100%;justify-content:flex-start}}
