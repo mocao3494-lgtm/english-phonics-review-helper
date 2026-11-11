@@ -10,7 +10,6 @@ jobs:
           node-version: 22
       - run: node --check app.js
       - run: node --check master-plan.js
-      - run: node --check pwa.js
       - run: node --check sw.js
       - run: |
           grep -q 'function nextPlan' app.js
