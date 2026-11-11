@@ -13,3 +13,22 @@
 .plan-loader .help{margin:8px 0 0}.master-focus{padding:9px 10px;background:#eef7ff;border-left:5px solid #3176ac;border-radius:7px;line-height:1.65}
 @media(max-width:620px){.daily-print table{font-size:.82rem}.daily-print th,.daily-print td{padding:5px}.primary.compact{width:100%}}
 @media print{body{background:#fff}.daily-print{font-size:12pt}.daily-print h3{font-size:15pt;break-after:avoid}.daily-print table{page-break-inside:avoid}.daily-print .story-en{page-break-inside:avoid}}
+
+/* 扫码批改与家长加词：手机上先勾选，再保存，不需要逐个重新输入。 */
+.today-words{margin:14px 0;padding:15px;border-radius:12px;background:#edf8f3;border:1px solid #b7dccd}
+.today-words .eyebrow{margin:0;color:#52766b;font-size:.9rem;font-weight:700}.today-words h2{margin:4px 0 10px;color:#155346;font-size:1.32rem}
+.word-chips{display:flex;flex-wrap:wrap;gap:8px}.word-chip{display:inline-block;padding:8px 10px;border-radius:8px;background:#fff;color:#174d42;font-size:1.08rem;border:1px solid #c6e1d6}.word-chip b{color:#b42318}.today-focus{margin:11px 0 0;line-height:1.55;color:#355f54}
+.data-only{display:none!important}.optional-input{margin-top:14px;padding-top:10px;border-top:1px dashed #a9c9bd}.optional-input summary{cursor:pointer;color:#416a5f;font-weight:700}.optional-input label{margin-top:12px}
+.advanced-card{display:none}.advanced-card.shown{display:block}.more-tools{display:block;margin:12px auto 20px}
+.correction-box{margin:14px 0 8px;padding:13px;border:2px solid #9dcfc0;border-radius:11px;background:#f4fbf8}
+.correction-box h3{margin:0 0 5px;color:#155346;font-size:1.05rem}.correction-box .help{margin-bottom:8px}
+.correction-words{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:345px;overflow:auto;padding:2px}
+.qr-access{display:flex;align-items:center;gap:10px;margin:8px 0;padding:9px;border-radius:9px;background:#fff;border:1px dashed #93c9b7}
+.qr-access img{width:76px;height:76px;flex:0 0 auto}
+.qr-access b,.qr-access span,.qr-access a{display:block}
+.qr-access span{margin:3px 0;color:#4d6d63;font-size:.88rem}
+.qr-access a{color:#0c6855;font-weight:700;text-decoration:underline}
+.correction-choice{display:flex;align-items:flex-start;gap:7px;margin:0!important;padding:7px 8px;border:1px solid #c8ded6;border-radius:8px;background:#fff;font-weight:400;line-height:1.25}
+.correction-choice input{width:18px;height:18px;min-width:18px;margin:0}.correction-choice b{color:#155346}.correction-choice small{display:block;margin-top:3px;color:#58716a;font-size:12px}
+@media(max-width:560px){.correction-words{grid-template-columns:1fr;max-height:310px}.correction-choice{padding:9px}.qr-access img{width:65px;height:65px}}
+@media print{.correction-box{display:none}}
