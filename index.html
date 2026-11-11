@@ -141,6 +141,7 @@
       <details><summary>可汗学院具体点哪里：选课 布置 查看</summary><ol><li><b>按标准精确找课：</b>点顶部 <b>Search</b>（放大镜）→ <b>Choose Standard</b> → <b>Common Core 1st Grade</b> → <b>CCSS.ELA</b> → <b>CCSS.ELA.RF</b> → <b>CCSS.ELA.RF.1.3</b>。这里是拼读与字母组合主线。</li><li><b>按主题快速找课：</b>点 <b>Reading</b>（阅读）→ 右上角选 <b>1st Grade</b>。按本页建议找课程标题：<b>Final -e & Long Vowel Teams</b>（长元音/元音组合）、<b>r-Controlled Vowels</b>（ar or er ir ur）、<b>Consonant Blends</b>（连缀）、<b>Consonant Digraphs</b>（ch sh th wh）、<b>1-Syllable & 2-Syllable Words</b>（音节）、<b>Reading Fluency</b>（朗读）。</li><li><b>布置顺序：</b>第一次点 <b>Main</b>（主课）；能解释规律并完成陌生词读写，再点 <b>Practice 1</b>、<b>Practice 2</b>。若 Main 分数低或规则检验没过，改点 <b>Basic</b>（基础支持），不要急着刷练习。</li><li><b>阅读迁移：</b>每周 2 次点 <b>Books</b>，或在 Reading 找 <b>Early Readers</b>。选一本短书，读 5-10 分钟：让孩子圈/说当天组合，读一句含该组合的句子，再用中文复述一句意思。绘本不是每个词都可按自然拼读，不会的词可直接告诉他。</li><li><b>查看掌握：</b>点 <b>Students</b> → <b>Class Reports</b>（班级报告）→ 在 <b>Assignments</b> 看已布置任务，或 <b>All Progress</b> 看全部历史记录。看三件事：Main/Basic 是否完成、尝试和得分是否提升、纸笔陌生词检验是否同时达标。单次高分不等于规则掌握。</li></ol></details>
       <details><summary>怎么区分会写单词和会拼读规则</summary><p>会写旧词只说明孩子记住了这个词；只有“能说出组合读音、能读写没背过但规律相同的词、能区分 hop/hope 这类对比词”才算真正掌握规则。本页面的“本周规则检验”专门记录这三件事。</p></details>
       <label>孩子昵称 <small>用于区分备份文件，不填写也可以。</small><input id="childName" type="text" maxlength="30" placeholder="例如：小明" /></label>
+      <label>规则例外词 <small>每行一个；这些词将按“视觉拼写”处理，不再套用自动拼读规律。</small><textarea id="ruleExceptions" rows="3" placeholder="例如：one&#10;said"></textarea></label>
       <label class="upload">导入下一阶段课程计划<input id="importPlan" type="file" accept="application/json" /></label><p class="help">课程计划 JSON 为日期数组，每项包含 date、words、focus；导入后将优先覆盖同日期的固定计划。</p>
       <div class="actions"><button class="secondary" id="exportData">导出备份</button><label class="upload">导入备份<input id="importData" type="file" accept="application/json" /></label><button class="danger" id="resetData">清空全部数据</button></div>
     </section>
@@ -149,6 +150,6 @@
   <footer>每日流程：可汗规律课 8-10 分钟 → 新词词块预习 5 分钟 → 规律朗读迁移 5 分钟 → 默写 8-10 分钟 → 录入错词 3 分钟。</footer>
   <script src="./master-plan.js?v=20261111-1"></script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
-<script src="./app.js?v=20261111-26"></script>
+<script src="./app.js?v=20261111-27"></script>
 </body>
 </html>
