@@ -15,7 +15,7 @@
     <div class="brand"><span>字母拼读</span><strong>英语拼读每日打印助手</strong></div>
     <p>每天扫码勾错或输入默写错词；新词、复习词、拼读规则、可汗建议和故事阅读均由网页自动安排。</p>
   </header>
-  <main>
+  <main><button type="button" class="secondary compact" id="simpleMode">切换为今日简洁模式</button>
     <section class="notice">数据只保存在本手机/浏览器。请定期点击“导出备份”；换手机后用“导入备份”恢复。</section>
 
     <section class="card input-card" id="entry">
@@ -124,6 +124,8 @@
       <div id="weekendContent"></div>
     </section>
 
+    <section class="card hidden advanced-card" id="diagnostics"><h2>诊断信息</h2><p id="diagnosticContent" class="help"></p></section>
+
     <section class="card hidden advanced-card" id="history">
       <h2>学习记录管理</h2>
       <p class="help">可查看、修改或删除已保存的日期。修改后重新保存，后续复习计划会随之更新。</p>
@@ -147,6 +149,6 @@
   <footer>每日流程：可汗规律课 8-10 分钟 → 新词词块预习 5 分钟 → 规律朗读迁移 5 分钟 → 默写 8-10 分钟 → 录入错词 3 分钟。</footer>
   <script src="./master-plan.js?v=20261111-1"></script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
-<script src="./app.js?v=20261111-25"></script>
+<script src="./app.js?v=20261111-26"></script>
 </body>
 </html>
