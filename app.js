@@ -10,6 +10,8 @@ const query=new URLSearchParams(location.search);
 const reviewMode=query.get('mark')==='1';
 // 平时打开页面永远使用当天；只有打印作业的二维码才固定到历史日期。
 const queryDate=reviewMode&&/^\d{4}-\d{2}-\d{2}$/.test(query.get('date')||'')?query.get('date'):'';
+const realToday=()=>iso(new Date());
+const queryItems=reviewMode?(query.get('items')||'').split('|').map(norm).filter(Boolean).map(word=>({word,tag:'当日默写'})):[];
 data.printedPlans=data.printedPlans&&typeof data.printedPlans==='object'?data.printedPlans:{};
 const masterPlanFor=date=>(window.MASTER_DAILY_PLAN||[]).find(x=>x.date===date);
 const formatItems=items=>(items||[]).map(x=>typeof x==='string'?x:[x.word,x.gloss||x.cn,x.ipa].filter(Boolean).join(' | ')).join('\n');
@@ -18,13 +20,13 @@ function planRuleIds(focus=''){
   return [...new Set(pairs.filter(([key])=>focus.includes(key)).map(([,id])=>id))];
 }
 function updateMasterPlanHint(){
-  const date=$('studyDate').value||iso(today), plan=masterPlanFor(date), next=masterPlanFor(plus(date,1));
+  const date=$('studyDate').value||realToday(), plan=masterPlanFor(date), next=masterPlanFor(plus(date,1));
   $('masterPlanHint').innerHTML=plan
     ? `<b>今天固定新词：</b>${plan.words.map(x=>`<b>${escapeHtml(x.word)}</b>`).join('、')}。<br><b>明天预告：</b>${next?next.words.map(x=>`<b>${escapeHtml(x.word)}</b>`).join('、'):'明天为复习日'}。<br>今天重点：${escapeHtml(plan.focus)}。您只需在下方填写今天的错词。`
     : '今天是复习日：无需输入新词，只填写今天默写错误的词。';
 }
 function renderTodayWords(){
-  const date=$('studyDate').value||iso(today), plan=masterPlanFor(date);
+  const date=$('studyDate').value||realToday(), plan=masterPlanFor(date);
   $('todayWordDate').textContent=`${dateLabel(date)}｜5 个新词`;
   if(plan?.words?.length){
     $('todayWordChips').innerHTML=plan.words.map((x,i)=>`<span class="word-chip"><b>${i+1}.</b> ${escapeHtml(x.word)}</span>`).join('');
@@ -36,7 +38,7 @@ function renderTodayWords(){
   }
 }
 function fillMasterPlan(){
-  const date=$('studyDate').value||iso(today), plan=masterPlanFor(date);
+  const date=$('studyDate').value||realToday(), plan=masterPlanFor(date);
   if(!plan){$('newWords').value='今天是复习日（没有固定新词）';$('nextNewWords').value='';updateMasterPlanHint();renderTodayWords();return;}
   $('newWords').value=formatItems(plan.words);
   const next=masterPlanFor(plus(date,1));
@@ -134,11 +136,12 @@ const HISTORICAL_DICTATION_ITEMS={
 };
 const cloneItems=items=>(items||[]).map(x=>typeof x==='string'?{word:x}:{...x});
 function dictationItemsFor(date){
-  const saved=data.printedPlans?.[date];
-  if(Array.isArray(saved)&&saved.length)return cloneItems(saved);
-  const record=data.records.find(r=>r.date===date);
-  if(Array.isArray(record?.dictationItems)&&record.dictationItems.length)return cloneItems(record.dictationItems);
+  if(reviewMode&&queryDate===date&&queryItems.length)return cloneItems(queryItems);
   if(HISTORICAL_DICTATION_ITEMS[date])return cloneItems(HISTORICAL_DICTATION_ITEMS[date]);
+  const saved=storedPlanFor(date);
+  if(saved)return saved;
+  const record=data.records.find(r=>r.date===date);
+  if(Array.isArray(record?.dictationItems)&&record.dictationItems.length&&hasRequiredNewWords(date,record.dictationItems))return cloneItems(record.dictationItems);
   const planned=planForDate(date);
   if(planned.length)return cloneItems(planned);
   return cloneItems(masterPlanFor(date)?.words||[]);
@@ -256,16 +259,25 @@ function khanRecommendation(ws,focus=''){const t=data.tests||{}; const has=t.com
   if(focusRule)return {title:'跟当天新词同步学规则',course:focusRule.khan,card:'Main',text:`今天先围绕${focusRule.name}做一张 Main（主课）卡，再从新词中找同一组合。${syncNote}`};
   return {title:'规则课短学 + 纸笔主练',course:'1-Syllable & 2-Syllable Words',card:'Main',text:'当前没有明显规则性薄弱项，建议每天只做1张主课卡，其余时间用于纸笔错词间隔复习。'};
 }
+const hasRequiredNewWords=(date,items)=>{
+  const required=(masterPlanFor(date)?.words||[]).map(x=>norm(x.word));
+  if(!required.length)return true;
+  const set=new Set((items||[]).map(x=>norm(typeof x==='string'?x:x.word)));
+  return required.every(word=>set.has(word));
+};
+function storedPlanFor(date){
+  const stored=data.printedPlans?.[date];
+  return Array.isArray(stored)&&stored.length&&hasRequiredNewWords(date,stored)?cloneItems(stored):null;
+}
 function currentPlan(){
-  // 正常打开永远以设备当天为准；历史日期只用于二维码批改页。
-  const deviceToday=iso(today),last=data.records.at(-1),calculated=last?plus(last.date,1):deviceToday;
-  const target=calculated>deviceToday?calculated:deviceToday;
-  const frozen=data.printedPlans?.[target];
-  return {target,list:Array.isArray(frozen)&&frozen.length?cloneItems(frozen):buildPlan(target).list};
+  const target=reviewMode&&queryDate?queryDate:realToday();
+  if(reviewMode&&queryItems.length)return {target,list:cloneItems(queryItems)};
+  const frozen=storedPlanFor(target);
+  return {target,list:frozen||buildPlan(target).list};
 }
 function planForDate(date){
-  const frozen=data.printedPlans?.[date];
-  if(Array.isArray(frozen)&&frozen.length)return cloneItems(frozen);
+  const frozen=storedPlanFor(date);
+  if(frozen)return frozen;
   const yesterday=data.records.find(r=>plus(r.date,1)===date);
   const saved=(yesterday?.nextPlan||[]).map(x=>typeof x==='string'?x:x.word).filter(Boolean);
   const fresh=buildPlan(date).list;
@@ -342,14 +354,25 @@ function dailyCardMarkup(record){
   const curve=CURVE.map(n=>plus(record.date,n)).join('、');
   return `<div class="daily-print"><div class="daily-top"><b>日期：${dateLabel(record.date)}</b><span>姓名：____________</span></div>${masterFocus?`<p class="master-focus"><b>总表当天重点：</b>${escapeHtml(masterFocus)}。网页会先结合这个重点，再结合累计错词决定今日练习。</p>`:''}<h3>① 今天 5 个新词：先读词块，再写单词</h3><table class="daily-table"><thead><tr><th>英文</th><th>中文</th><th>音标</th><th>词块/规则</th><th>默写一遍</th></tr></thead><tbody>${newItems.map(x=>`<tr><td><b>${escapeHtml(x.word)}</b></td><td>${escapeHtml(x.gloss)}</td><td>${escapeHtml(x.ipa)}</td><td>${escapeHtml(x.chunk)}</td><td></td></tr>`).join('')}</tbody></table><h3>② 今天复习词：默写后圈出词块</h3><p class="review-words">${reviewItems.map((x,i)=>`${i+1}. ${escapeHtml(x.word)}（${escapeHtml(x.gloss)}）`).join('　')||'今天暂无历史复习词；明天开始会自动加入。'}</p><h3>③ 今天只学这 ${rules.length} 条规则</h3><ol class="rule-list daily-rules">${rules.map(r=>`<li><b>${escapeHtml(r.name)}</b>：${escapeHtml(r.detail)}</li>`).join('')}</ol><p class="red-tip">重点：孩子要能“圈组合 → 说音标/音素 → 读例词 → 写一个同规律陌生词”。只会默写见过的词，不等于会规则。</p><h3>④ 可汗学院（8–10 分钟）</h3><ol class="rule-list"><li>点 <b>Reading</b> → 右上角 <b>1st Grade</b> → 找 <b>${escapeHtml(rec.course)}</b>。</li><li>先点 <b>${escapeHtml(rec.card)}</b>。${escapeHtml(rec.text)}</li><li>完成后让孩子说出今天一个组合和对应读音；说不出，就做本页第③部分，不急着刷 Practice。</li></ol><h3>⑤ 冒险小阅读：《${escapeHtml(story.title)}》</h3><p class="story-en">${escapeHtml(story.en)}</p><p>${escapeHtml(story.cn)}</p><p class="curve-note"><b>本篇词汇：</b>今天新词 ${newItems.map(x=>escapeHtml(x.word)).join('、')}；复习词 ${story.review?.map(escapeHtml).join('、')||'无'}。</p><ol class="rule-list">${story.questions.map(q=>`<li>${escapeHtml(q)}</li>`).join('')}</ol><p class="curve-note">本日新词后续复习日期：<b>${curve}</b>。错词自动追加到次日，并继续按曲线出现。</p></div>`;
 }
+function currentDailyRecord(target,list){
+  const saved=data.records.find(r=>r.date===target);
+  const master=masterPlanFor(target),next=masterPlanFor(plus(target,1));
+  return {...(saved||{}),date:target,
+    newWords:(master?.words||saved?.newWords||[]).map(x=>typeof x==='string'?x:x.word),
+    newItems:master?.words||saved?.newItems||[],
+    nextNewWords:(next?.words||saved?.nextNewWords||[]).map(x=>typeof x==='string'?x:x.word),
+    nextNewItems:next?.words||saved?.nextNewItems||[],
+    errors:saved?.errors||[],errorItems:saved?.errorItems||[],
+    dictationItems:cloneItems(list),reviewedWords:cloneItems(list).map(x=>norm(x.word)),
+    masterFocus:master?.focus||saved?.masterFocus||''};
+}
 function worksheetHtml(title,body){return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#111;margin:18mm;font-size:12pt;line-height:1.6}h1{text-align:center;font-size:20pt}h2{font-size:15pt;border-bottom:1px solid #1c5e4f;padding-bottom:3px}h3{font-size:13pt;margin:14px 0 6px;color:#155346}table{border-collapse:collapse;width:100%;font-size:10.5pt}th,td{border:1px solid #333;padding:6px;vertical-align:top}th{background:#eaf4f0}.daily-top{display:flex;justify-content:space-between;border-bottom:1px solid #333;padding-bottom:6px}.daily-table td:last-child{height:30px}.review-words{padding:8px;background:#f4f8f5}.red-tip{color:#b00020;font-weight:bold;background:#fff1f1;padding:8px}.story-en{font-family:Arial,sans-serif}.curve-note{background:#fff6d9;padding:8px}@page{size:A4;margin:14mm}</style></head><body><h1>${escapeHtml(title)}</h1>${body}</body></html>`}
 function downloadDoc(name,html){const blob=new Blob(['\ufeff',html],{type:'application/msword;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
 function openPrint(title,body){const win=window.open('','_blank');if(!win){alert('浏览器阻止了新页面，请允许弹出窗口后再试，或改用“导出 WPS”。');return}win.document.write(worksheetHtml(title,body));win.document.close();win.focus();setTimeout(()=>win.print(),350)}
-function render(){const {target,list}=currentPlan(); const last=data.records.at(-1); const ws=weakness(); const targetFocus=masterPlanFor(target)?.focus||''; const rec=khanRecommendation(ws,targetFocus);
+function render(){const {target,list}=currentPlan(); const dailyRecord=currentDailyRecord(target,list); const last=data.records.at(-1); const ws=weakness(); const targetFocus=masterPlanFor(target)?.focus||''; const rec=khanRecommendation(ws,targetFocus);
   renderCorrectionPicker();renderCorrectionQr();
   if(last||Object.values(data.tests||{}).some(x=>x!=='')){['plan','analysis','khanPlan','checkPlan','weekend'].forEach(id=>$(id).classList.remove('hidden'));}
-  if(last){$('dailyCard').classList.remove('hidden');$('dailyDate').textContent='（'+dateLabel(last.date)+'）';$('dailyCardContent').innerHTML=dailyCardMarkup(last);}
-  else {$('dailyCard').classList.add('hidden');}
+  $('dailyCard').classList.remove('hidden');$('dailyDate').textContent='（'+dateLabel(target)+'）';$('dailyCardContent').innerHTML=dailyCardMarkup(dailyRecord);
   $('nextDate').textContent='（'+target+'）';
   const words=list.length?list:[];$('dictationList').innerHTML=words.map((x,i)=>`<div class="word"><b>${i+1}.</b> ${x.word}<span class="tag">${x.tag}</span></div>`).join('')||'<p>先保存一次“今天录入”，系统才会生成下一次清单。</p>';
   $('planNote').textContent=list.length<40?`目前已排 ${list.length} 个词。请在“明天固定要学的5个新词”补足新词；其余位置会随记录增加，按间隔复习填充。不会为凑40题重复同一个词。`:'40词已由明日新词、次日/第3/7/14/30天复习、高频错词、规律词和已掌握抽查组合。';
@@ -360,13 +383,12 @@ function render(){const {target,list}=currentPlan(); const last=data.records.at(
   $('soundCardContent').innerHTML=SOUNDS.map(s=>`<div class="sound"><small><b>${s[0]}</b></small><b>${s[1]}</b> <em>${s[2]}</em><small>例词：${s[3]}<br>${s[4]}</small></div>`).join('');
 }
 function saveRecord(){
-  const date=$('studyDate').value||iso(today),master=masterPlanFor(date),nextMaster=masterPlanFor(plus(date,1));
+  const {target:date,list:dictationItems}=currentPlan(),master=masterPlanFor(date),nextMaster=masterPlanFor(plus(date,1));
   // 新词不再由家长手输，始终以总表为准；家长每天只录入批改后的错误词。
   const newItems=master?.words||[],errorItems=parseEntries($('errorWords').value),nextNewItems=nextMaster?.words||[];
   const newWords=newItems.map(x=>x.word),errors=errorItems.map(x=>x.word),nextNewWords=nextNewItems.map(x=>x.word);
   if(!newWords.length&&!errors.length){alert('请至少输入今天的新词或错词。');return}
   // 当天打印过的清单就是当天实际默写池；这样扫码勾错或手工录错后，所有正确词都会进入下一轮曲线。
-  const dictationItems=dictationItemsFor(date);
   data.printedPlans[date]=cloneItems(dictationItems);
   const reviewedWords=dictationItems.map(x=>norm(x.word));
   data.records=data.records.filter(r=>r.date!==date);
@@ -381,12 +403,14 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function correctionWords(){return [...document.querySelectorAll('#correctionWords input:checked')].map(x=>norm(x.value));}
 function syncCheckedErrors(){
   const checked=correctionWords();
-  const extras=parseEntries($('errorWords').value).filter(x=>!dictationItemsFor($('studyDate').value).some(y=>norm(y.word)===x.word));
+  const {list}=currentPlan();
+  const extras=parseEntries($('errorWords').value).filter(x=>!list.some(y=>norm(y.word)===x.word));
   $('errorWords').value=[...checked,...extras.map(x=>x.word)].join('\n');
 }
 function renderCorrectionPicker(){
-  // 批改页只读取当天实际打印的清单，绝不临时重新抽题。
-  const date=$('studyDate').value||iso(today), planned=dictationItemsFor(date), master=masterPlanFor(date);
+  // 批改、打印和当天总表始终读取同一份当天清单。
+  const {target:date,list:planned}=currentPlan(), master=masterPlanFor(date);
+  $('studyDate').value=date;
   const list=planned.length?planned:(master?.words||[]).map(x=>({...x,tag:'今天新词'}));
   const selected=new Set(parseEntries($('errorWords').value).map(x=>x.word));
   $('correctionDate').textContent=date;
@@ -395,12 +419,12 @@ function renderCorrectionPicker(){
 }
 function renderCorrectionQr(){
   const box=$('qrAccess');if(!box)return;
-  const date=$('studyDate').value||iso(today);
+  const {target:date,list}=currentPlan();
   if(reviewMode){
     box.innerHTML=`<div><b>正在批改 ${escapeHtml(dateLabel(date))} 的默写</b><span>只勾选写错的词，再点下方“保存错词”。</span><a href="./">返回今天学习页</a></div>`;
     return;
   }
-  const url=publicPageUrl(date);
+  const url=publicPageUrl(date,list);
   box.innerHTML=`<img src="${qrImageUrl(url)}" alt="当天批改二维码"><div><b>当天批改二维码</b><span>打印后用微信扫一扫，直接进入当天的勾错页。</span><a href="${escapeHtml(url)}">二维码未显示？直接点此进入批改</a></div>`;
 }
 async function enrichCustomEntry(entry){
@@ -424,7 +448,10 @@ async function addCustomWords(){
     save();$('customWords').value='';$('customStatus').textContent=`已加入 ${entries.length} 个词；它们会从下一次默写开始自动进入复习曲线。`;render();
   }finally{button.disabled=false;button.textContent='加入并自动补全';}
 }
-function publicPageUrl(date){return `https://mocao3494-lgtm.github.io/english-phonics-review-helper/?date=${encodeURIComponent(date)}&mark=1`;}
+function publicPageUrl(date,items=[]){
+  const packed=(items||[]).map(x=>norm(typeof x==='string'?x:x.word)).filter(Boolean).join('|');
+  return `https://mocao3494-lgtm.github.io/english-phonics-review-helper/?date=${encodeURIComponent(date)}&mark=1${packed?`&items=${encodeURIComponent(packed)}`:''}`;
+}
 function qrImageUrl(url){return `https://api.qrserver.com/v1/create-qr-code/?size=110x110&margin=0&data=${encodeURIComponent(url)}`;}
 function exportWorksheet(){
   const {target,list}=currentPlan();
@@ -433,7 +460,7 @@ function exportWorksheet(){
   data.printedPlans=data.printedPlans&&typeof data.printedPlans==='object'?data.printedPlans:{};
   data.printedPlans[target]=cloneItems(list);save();
   const metas=allMetas();
-  const correctionUrl=publicPageUrl(target);
+  const correctionUrl=publicPageUrl(target,list);
   const chunks=[]; for(let i=0;i<list.length;i+=20)chunks.push(list.slice(i,i+20));
   const pad=(arr,n)=>[...arr,...Array(Math.max(0,n-arr.length)).fill(null)];
   const pages=chunks.map((part,pageIndex)=>{
@@ -444,19 +471,14 @@ function exportWorksheet(){
   const html=`<!doctype html><html><head><meta charset="utf-8"><title>英语默写作业</title><style>@page{size:A4 portrait;margin:10mm}*{box-sizing:border-box}body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#111;margin:0;font-size:10.5pt}.paper{min-height:277mm;page-break-after:always;break-after:page}.paper:last-child{page-break-after:auto;break-after:auto}header{height:25mm;display:grid;grid-template-columns:30mm 1fr 62mm 28mm;align-items:center}.badge{width:23mm;height:23mm;border:1.4px solid #222;border-radius:50%;text-align:center;padding-top:4mm;font:bold 12pt Arial;line-height:1.1}.badge small{font:6.5pt 'Microsoft YaHei'}.paper-title{text-align:center;font-size:19pt;font-weight:bold;letter-spacing:2px}.fields{font-size:10.5pt;line-height:1.9}.qr{text-align:center;font-size:6.5pt;line-height:1.15}.qr img{width:23mm;height:23mm;display:block;margin:auto}.tip{margin:1.5mm 0 2mm;font-size:9.5pt}table{border-collapse:collapse;width:100%;table-layout:fixed}th,td{border:1px solid #222;text-align:center;vertical-align:middle;padding:1.5mm 1mm;height:11.4mm}th{font-weight:bold;height:9mm;background:#fff}th:nth-child(1),td:nth-child(1){width:7%}th:nth-child(2),td:nth-child(2){width:31%}th:nth-child(3),td:nth-child(3){width:25%}th:nth-child(4),td:nth-child(4){width:10%}th:nth-child(5),td:nth-child(5){width:27%}.write{background:#fff}footer{text-align:center;font-size:7.5pt;margin-top:2mm;color:#444}</style></head><body>${pages}</body></html>`;
   const blob=new Blob(['\ufeff',html],{type:'application/msword;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`英语默写作业_${target}.doc`;a.click();URL.revokeObjectURL(a.href);
 }
-function exportDailyWorksheet(){
-  const last=data.records.at(-1);if(!last){alert('请先保存一次“今天录入”。');return;}
-  downloadDoc(`英语拼读每日总表_${last.date}.doc`,worksheetHtml(`英语拼读每日总表｜${dateLabel(last.date)}`,dailyCardMarkup(last)));
-}
-function printDailyWorksheet(){
-  const last=data.records.at(-1);if(!last){alert('请先保存一次“今天录入”。');return;}
-  openPrint(`英语拼读每日总表｜${dateLabel(last.date)}`,dailyCardMarkup(last));
-}
+function currentDailyPrintRecord(){const {target,list}=currentPlan();return currentDailyRecord(target,list);}
+function exportDailyWorksheet(){const record=currentDailyPrintRecord();downloadDoc(`英语拼读每日总表_${record.date}.doc`,worksheetHtml(`英语拼读每日总表｜${dateLabel(record.date)}`,dailyCardMarkup(record)));}
+function printDailyWorksheet(){const record=currentDailyPrintRecord();openPrint(`英语拼读每日总表｜${dateLabel(record.date)}`,dailyCardMarkup(record));}
 function fill(){
   data.customWords=Array.isArray(data.customWords)?data.customWords:[];
   seedKnownErrors();
   // 普通入口始终使用设备当天；只有二维码的 mark=1 才允许打开历史日期。
-  const now=reviewMode&&queryDate?queryDate:iso(today); $('studyDate').value=now;
+  const now=reviewMode&&queryDate?queryDate:realToday(); $('studyDate').value=now;
   const existing=data.records.find(r=>r.date===now), last=data.records.at(-1);
   if(existing){$('errorWords').value=formatItems(existing.errorItems?.length?existing.errorItems:existing.errors);$('khanDone').value=existing.khan||'';}
   fillMasterPlan();
@@ -481,7 +503,7 @@ let advancedShown=false;
 $('toggleAdvanced').onclick=()=>{advancedShown=!advancedShown;document.querySelectorAll('.advanced-card').forEach(x=>x.classList.toggle('shown',advancedShown));$('toggleAdvanced').textContent=advancedShown?'收起更多功能':'显示更多功能（规则卡、可汗记录、备份）';};
 try{fill();}catch(err){
   console.error(err);
-  $('studyDate').value=reviewMode&&queryDate?queryDate:iso(today);
+$('studyDate').value=reviewMode&&queryDate?queryDate:realToday();
   fillMasterPlan();
   renderCorrectionPicker();
   renderCorrectionQr();
