@@ -97,13 +97,12 @@ const WEEK=['星期日','星期一','星期二','星期三','星期四','星期�
 
 function save(){localStorage.setItem(KEY,JSON.stringify(data));}
 const DRAFT_KEY='phonics-helper-draft-v1';function childName(){return String(data.profile?.childName||'').trim();}function saveDraft(){const {target}=currentPlan();sessionStorage.setItem(DRAFT_KEY,JSON.stringify({date:target,errors:$('errorWords').value,khan:$('khanDone').value}));}function clearDraft(){sessionStorage.removeItem(DRAFT_KEY);}function renderDiagnostics(){const box=$('diagnosticContent');if(!box)return;const plans=allMasterPlans().map(x=>x.date).filter(Boolean).sort();box.textContent=`网页版本：20261111-26｜学习记录：${data.records.length} 天｜课程覆盖至：${plans.at(-1)||'未设置'}｜最近备份：${data.lastBackupAt||'尚未备份'}｜数据只保存在本机浏览器。`;}
-function showSaveToast(message,target){
-  const toast=$('saveToast');if(!toast)return;
-  $('saveToastText').textContent=message;
-  const button=$('toastExport');button.hidden=!target;button.textContent=target?`导出 ${target} 作业`:'';
-  button.onclick=()=>exportWorksheet();
-  toast.classList.add('shown');clearTimeout(showSaveToast.timer);showSaveToast.timer=setTimeout(()=>toast.classList.remove('shown'),7000);
+function showActionToast(message,label,action){
+  const toast=$('saveToast');if(!toast)return;$('saveToastText').textContent=message;
+  const button=$('toastExport');button.hidden=!label;button.textContent=label||'';button.onclick=()=>{action?.();toast.classList.remove('shown');};
+  toast.classList.add('shown');clearTimeout(showActionToast.timer);showActionToast.timer=setTimeout(()=>toast.classList.remove('shown'),10000);
 }
+function showSaveToast(message,target){showActionToast(message,target?`导出 ${target} 作业`:'',()=>exportWorksheet());}
 function normalizeBackup(candidate){
   if(!candidate||typeof candidate!=='object'||Array.isArray(candidate)||!Array.isArray(candidate.records))throw new Error('备份缺少学习记录');
   const validDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -220,7 +219,7 @@ function dueWords(targetDate){
   Object.keys(groups).forEach(k=>groups[k]=[...new Set(groups[k])]);return groups
 }
 function ruleOf(w){
-  const word=norm(w); const ids=PATTERNS.filter(p=>p.match(word)).map(p=>p.id);
+  const word=norm(w);if((data.ruleExceptions||[]).map(norm).includes(word))return ['irregular']; const ids=PATTERNS.filter(p=>p.match(word)).map(p=>p.id);
   // 未预置的新词也尽量按可见词块归类；这是“提示”，不能替代家长核对音标。
   if(/(?:ar|or|er|ir|ur)/.test(word)) ids.push('r_controlled');
   if(/(?:ai|ay|ee|ea|oa|ow|oo|ou|oi|oy|ue|ui|ew)/.test(word)) ids.push('vowel_teams');
@@ -431,6 +430,7 @@ function renderCurriculumNotice(){
   const left=Math.ceil((new Date(end+'T12:00:00')-new Date(realToday()+'T12:00:00'))/86400000);
   const backupDue=!data.lastBackupAt||Date.now()-new Date(data.lastBackupAt).getTime()>7*86400000;box.textContent=(left<0?`课程总表已在 ${end} 结束：请在下方导入下一阶段词表；错词复习仍会继续。`:left<=14?`课程总表将在 ${end} 结束（还剩 ${left} 天）：建议提前导入下一阶段词表。`:`课程总表覆盖至 ${end}。`)+(backupDue?' 已超过 7 天未备份，请导出备份。':'');
 }
+let deletedRecord=null;
 function renderHistory(){
   const box=$('historyContent'); if(!box)return;
   const records=[...data.records].sort((a,b)=>b.date.localeCompare(a.date));
@@ -439,11 +439,9 @@ function renderHistory(){
   box.querySelectorAll('[data-delete-record]').forEach(button=>button.onclick=()=>{
     const date=button.dataset.deleteRecord;
     if(!confirm(`确定删除 ${date} 的学习记录吗？删除后会重新计算后续复习安排。`))return;
-    data.records=data.records.filter(record=>record.date!==date);
-    delete data.printedPlans[date];
-    rebuildWordState();
-    data.records.forEach(record=>record.nextPlan=buildPlan(plus(record.date,1)).list);
-    save();selectedDate=realToday();fill();
+    deletedRecord={record:data.records.find(record=>record.date===date),plan:data.printedPlans[date]};data.records=data.records.filter(record=>record.date!==date);
+    delete data.printedPlans[date];rebuildWordState();data.records.forEach(record=>record.nextPlan=buildPlan(plus(record.date,1)).list);
+    save();selectedDate=realToday();fill();showActionToast(`${date} 的学习记录已删除。`,'撤销删除',()=>{if(!deletedRecord)return;data.records.push(deletedRecord.record);if(deletedRecord.plan)data.printedPlans[date]=deletedRecord.plan;data.records.sort((a,b)=>a.date.localeCompare(b.date));rebuildWordState();save();fill();deletedRecord=null;});
   });
 }
 function saveRecord(){
@@ -540,7 +538,7 @@ function exportDailyWorksheet(){const record=currentDailyPrintRecord();downloadD
 function printDailyWorksheet(){const record=currentDailyPrintRecord();openPrint(`英语拼读每日总表｜${dateLabel(record.date)}`,dailyCardMarkup(record));}
 function fill(){
   data.customWords=Array.isArray(data.customWords)?data.customWords:[];
-  data.profile=data.profile&&typeof data.profile==='object'?data.profile:{childName:''};
+  data.profile=data.profile&&typeof data.profile==='object'?data.profile:{childName:''};data.ruleExceptions=Array.isArray(data.ruleExceptions)?data.ruleExceptions:[];$('ruleExceptions').value=data.ruleExceptions.join('\n');
   $('childName').value=data.profile.childName||'';
   seedKnownErrors();
   // 普通入口始终使用设备当天；只有二维码的 mark=1 才允许打开历史日期。
@@ -560,7 +558,7 @@ $('studyDate').onchange=()=>{
 };
 $('errorWords').onchange=()=>{saveDraft();renderCorrectionPicker();};$('khanDone').onchange=saveDraft;
 $('addCustomWords').onclick=addCustomWords;
-$('childName').onchange=()=>{data.profile={...(data.profile||{}),childName:$('childName').value.trim()};save();};
+$('childName').onchange=()=>{data.profile={...(data.profile||{}),childName:$('childName').value.trim()};save();};$('ruleExceptions').onchange=()=>{data.ruleExceptions=parseLines($('ruleExceptions').value);save();render();};
 $('selectAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=true);syncCheckedErrors();};
 $('clearAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=false);syncCheckedErrors();};
 $('exportWorksheet').onclick=exportWorksheet;
@@ -571,7 +569,7 @@ $('exportData').onclick=()=>{data.lastBackupAt=new Date().toISOString();save();c
 $('importPlan').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(reader.result),plans=Array.isArray(raw)?raw:raw.days,dates=new Set();if(!Array.isArray(plans)||!plans.length||plans.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')||!Array.isArray(x.words)||!x.words.length||dates.has(x.date)||(dates.add(x.date),false)))throw new Error('日期不能重复，且每一天必须有至少一个单词');data.curriculumPlan=plans;save();fill();alert(`已导入 ${plans.length} 天课程计划。`);}catch(err){alert(`课程计划导入失败：${err.message||'格式不正确'}。`);}finally{e.target.value='';}};reader.readAsText(file)};
 $('importData').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const imported=normalizeBackup(JSON.parse(r.result));data=imported;save();selectedDate=realToday();fill();alert(`导入成功：已恢复 ${data.records.length} 天学习记录。`);}catch(err){alert(`导入失败：${err.message||'备份文件格式不正确'}。原有数据未修改。`);}finally{e.target.value='';}};r.readAsText(f)};
 $('resetData').onclick=()=>{if(confirm('确定清空本手机的全部记录吗？此操作不能恢复；如有需要请先导出备份。')){data={records:[],tests:{},customWords:[],printedPlans:{},wordState:{},historicalSeedVersion:'2026-11-11-real-sheet-v5',correctionSyncVersion:CORRECTION_SYNC_VERSION};save();selectedDate=realToday();fill();alert('本机学习记录已清空。');}};
-let advancedShown=false;let simpleMode=localStorage.getItem('phonics-simple-mode')==='1';document.body.classList.toggle('simple-mode',simpleMode);$('simpleMode').textContent=simpleMode?'退出今日简洁模式':'切换为今日简洁模式';$('simpleMode').onclick=()=>{simpleMode=!simpleMode;localStorage.setItem('phonics-simple-mode',simpleMode?'1':'0');document.body.classList.toggle('simple-mode',simpleMode);$('simpleMode').textContent=simpleMode?'退出今日简洁模式':'切换为今日简洁模式';};
+let advancedShown=false;let simpleMode=localStorage.getItem('phonics-simple-mode')!=='0';document.body.classList.toggle('simple-mode',simpleMode);$('simpleMode').textContent=simpleMode?'退出今日简洁模式':'切换为今日简洁模式';$('simpleMode').onclick=()=>{simpleMode=!simpleMode;localStorage.setItem('phonics-simple-mode',simpleMode?'1':'0');document.body.classList.toggle('simple-mode',simpleMode);$('simpleMode').textContent=simpleMode?'退出今日简洁模式':'切换为今日简洁模式';};
 $('toggleAdvanced').onclick=()=>{advancedShown=!advancedShown;document.querySelectorAll('.advanced-card').forEach(x=>x.classList.toggle('shown',advancedShown));$('toggleAdvanced').textContent=advancedShown?'收起更多功能':'显示更多功能（规则卡、可汗记录、备份）';};
 try{fill();}catch(err){
   console.error(err);
