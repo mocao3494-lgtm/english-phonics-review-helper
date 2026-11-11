@@ -14,7 +14,8 @@ let selectedDate='';
 const realToday=()=>iso(new Date());
 const queryItems=reviewMode?(query.get('items')||'').split('|').map(norm).filter(Boolean).map(word=>({word,tag:'当日默写'})):[];
 data.printedPlans=data.printedPlans&&typeof data.printedPlans==='object'?data.printedPlans:{};
-const masterPlanFor=date=>(window.MASTER_DAILY_PLAN||[]).find(x=>x.date===date);
+const allMasterPlans=()=>[...(data.curriculumPlan||[]),...(window.MASTER_DAILY_PLAN||[])];
+const masterPlanFor=date=>allMasterPlans().find(x=>x.date===date);
 const formatItems=items=>(items||[]).map(x=>typeof x==='string'?x:[x.word,x.gloss||x.cn,x.ipa].filter(Boolean).join(' | ')).join('\n');
 function planRuleIds(focus=''){
   const pairs=[['r 控制','r_controlled'],['元音组合','vowel_teams'],['辅音连缀','blends'],['辅音字母组合','blends'],['词尾','endings'],['音节','multisyllable'],['短语','phrases'],['视觉','irregular']];
@@ -402,21 +403,33 @@ function downloadDoc(name,html){const blob=new Blob(['\ufeff',html],{type:'appli
 function openPrint(title,body){const win=window.open('','_blank');if(!win){alert('浏览器阻止了新页面，请允许弹出窗口后再试，或改用“导出 WPS”。');return}win.document.write(worksheetHtml(title,body));win.document.close();win.focus();setTimeout(()=>win.print(),350)}
 function render(){const {target,list}=currentPlan(),next=nextPlan(); const dailyRecord=currentDailyRecord(target,list); const last=data.records.at(-1); const ws=weakness(); const targetFocus=masterPlanFor(target)?.focus||''; const rec=khanRecommendation(ws,targetFocus);
   renderCorrectionPicker();renderCorrectionQr();
-  if(last||Object.values(data.tests||{}).some(x=>x!=='')){['plan','analysis','khanPlan','checkPlan','weekend','history'].forEach(id=>$(id).classList.remove('hidden'));}
+  if(last||Object.values(data.tests||{}).some(x=>x!=='')){['plan','analysis','khanPlan','checkPlan','weekend','history','progress'].forEach(id=>$(id).classList.remove('hidden'));}
   $('dailyCard').classList.remove('hidden');$('dailyDate').textContent='（'+dateLabel(target)+'）';$('dailyCardContent').innerHTML=dailyCardMarkup(dailyRecord);
   $('nextDate').textContent='（'+next.target+'）';
   const words=next.list.length?next.list:[];
   const groups={新词:0,错词:0,高频错词:0,已学复习:0,其他:0};words.forEach(x=>{const tag=x.tag||'';if(tag.includes('新词'))groups.新词++;else if(tag.includes('错词'))groups.错词++;else if(tag.includes('高频'))groups.高频错词++;else if(tag.includes('已学'))groups.已学复习++;else groups.其他++;});
   $('planSummary').textContent=words.length?`本次构成：新词 ${groups.新词} 个｜错词复习 ${groups.错词} 个｜高频错词 ${groups.高频错词} 个｜已学复习 ${groups.已学复习} 个`:'';
   const state=data.wordState||rebuildWordState();
-  $('dictationList').innerHTML=words.map((x,i)=>{const progress=state[norm(x.word)];const status=progress?`已错 ${progress.errors} 次；下次复习 ${progress.nextDue}`:'首次出现或基础抽查';return `<div class="word"><b>${i+1}.</b> ${escapeHtml(x.word)}<span class="tag">${escapeHtml(x.tag||'')}</span><small class="word-status">${escapeHtml(status)}</small></div>`}).join('')||'<p>先保存一次“今天录入”，系统才会生成下一次清单。</p>';
+  $('dictationList').innerHTML=words.map((x,i)=>{const progress=state[norm(x.word)];const reason=(x.tag||'').includes('错词')?'因近期默写出错，需要优先复习':(x.tag||'').includes('新词')?'今天的新词，首次进入默写':'按间隔复习曲线抽查';const status=progress?`${reason}｜已错 ${progress.errors} 次；下次复习 ${progress.nextDue}`:`${reason}｜首次出现或基础抽查`;return `<div class="word"><b>${i+1}.</b> ${escapeHtml(x.word)}<span class="tag">${escapeHtml(x.tag||'')}</span><small class="word-status">${escapeHtml(status)}</small></div>`}).join('')||'<p>先保存一次“今天录入”，系统才会生成下一次清单。</p>';
   $('planNote').textContent=words.length<40?`目前已排 ${list.length} 个词。请在“明天固定要学的5个新词”补足新词；其余位置会随记录增加，按间隔复习填充。不会为凑40题重复同一个词。`:'40词已由明日新词、次日/第3/7/14/30天复习、高频错词、规律词和已掌握抽查组合。';
   $('weaknessContent').innerHTML=ws.length?ws.map(w=>`<div class="weak"><b>${w.name}<br><span class="score-bad">累计错误 ${w.count} 次；近7次记录 ${w.recent} 次</span></b><span>${w.why}<br><small>建议检验：${w.test}</small></span></div>`).join(''):'<p>还没有录入错词。录入后会按字母组合、元音、音节、短语、词尾和不规则词形自动分析。</p>';
   $('khanContent').innerHTML=`<p><b>${rec.title}</b></p><ol class="rule-list"><li>点 <b>Reading</b> → 右上角选 <b>1st Grade</b>。</li><li>找 <b>${rec.course}</b>。</li><li>今天点 <b>${rec.card}</b>。</li><li>${rec.text}</li><li>完成后让孩子说：“我今天学的是 ______，它常读 ______，例如 ______。”说不出就不算掌握。</li><li><b>再加 5 分钟迁移：</b>Reading Fluency 读一小段，或每周 2 次 Books / Early Readers。让孩子在读物里圈出今天的组合，读出含它的一句话；图书里遇到不规则词不拿来考拼读规则。</li></ol>`;
   const t=data.tests||{}; const rows=[['字母组合辨认',t.combo,10,8],['陌生词读写',t.decode,10,8],['Magic e 对比',t.magic,4,3],['多音节拆分',t.syllable,5,4]]; $('checkContent').innerHTML='<p><b>系统根据当前最高的薄弱项生成：</b></p><ol class="rule-list">'+autoChecks(ws).map(x=>`<li>${x}</li>`).join('')+'</ol><p><b>您填写过的检验结果：</b></p><ul class="rule-list">'+rows.map(([name,score,total,pass])=>`<li><b>${name}</b>：${score??'未填'} / ${total}，${score!==undefined&&score!==''?(+score>=pass?'<span class="score-good">达到规则掌握线</span>':'<span class="score-bad">未达标：回到 Main/Basic + 陌生词纸笔练习</span>'):'可不填；系统已按错词自动调整。'}</li>`).join('')+'</ul>';
   const totalErrors=data.records.reduce((n,r)=>n+r.errors.length,0);$('weekendContent').innerHTML=`<p>已记录 ${data.records.length} 天，累计错词次数 ${totalErrors}。周末从所有错误词中抽20个，再从“已掌握词”抽10个，并做一次本页的规则检验。</p><ul class="rule-list"><li><b>如果旧词会写、陌生词不行：</b>纸笔练习要改为规则卡 + 陌生词读写；可汗做 Main/Basic，不刷 Practice。</li><li><b>如果陌生词能读写、旧词仍错：</b>规律已会，继续按次日/第3天/第7天默写，不增加新规则。</li><li><b>如果多音节、词组空格常错：</b>每题默写前先口头“拍音节 / 说词块”，不要直接整词硬写。</li></ul>`;
   $('soundCardContent').innerHTML=SOUNDS.map(s=>`<div class="sound"><small><b>${s[0]}</b></small><b>${s[1]}</b> <em>${s[2]}</em><small>例词：${s[3]}<br>${s[4]}</small></div>`).join('');
-  renderHistory();
+  renderHistory();renderProgress();renderCurriculumNotice();
+}
+function renderProgress(){
+  const box=$('progressContent');if(!box)return;
+  const records=data.records||[], reviewed=records.reduce((n,r)=>n+(r.reviewedWords||r.newWords||[]).length,0), errors=records.reduce((n,r)=>n+(r.errors||[]).length,0);
+  const rate=reviewed?Math.round((1-errors/reviewed)*100):0, stable=Object.values(data.wordState||rebuildWordState()).filter(x=>x.stage>=3&&x.errors===0).length;
+  box.innerHTML=records.length?`<div class="progress-grid"><div><b>${rate}%</b><span>累计默写正确率</span></div><div><b>${reviewed}</b><span>已默写词次</span></div><div><b>${errors}</b><span>累计错词次</span></div><div><b>${stable}</b><span>稳定掌握词</span></div></div>`:'<p>保存第一天批改结果后，这里会显示学习变化。</p>';
+}
+function renderCurriculumNotice(){
+  const box=$('curriculumNotice');if(!box)return;
+  const dates=allMasterPlans().map(x=>x.date).filter(Boolean).sort();const end=dates.at(-1);if(!end)return;
+  const left=Math.ceil((new Date(end+'T12:00:00')-new Date(realToday()+'T12:00:00'))/86400000);
+  box.textContent=left<0?`固定课程总表已在 ${end} 结束；可在“数据与使用说明”导入下一阶段词表，错词复习仍会继续。`:left<=14?`固定课程总表将在 ${end} 结束（还剩 ${left} 天）。建议提前准备下一阶段词表。`:`当前固定课程总表覆盖至 ${end}。`;
 }
 function renderHistory(){
   const box=$('historyContent'); if(!box)return;
@@ -555,6 +568,7 @@ $('exportDailyWorksheet').onclick=exportDailyWorksheet;
 $('printDailyWorksheet').onclick=printDailyWorksheet;
 $('markAllCorrect').onclick=()=>{alert('本次“全对”只说明这批词本次正确。请仍保留它们在第3天、第7天的安排，并在周末做陌生词规则检验。')};
 $('exportData').onclick=()=>{const backup={...data,backupVersion:3,appName:'英语拼读每日打印助手',exportedAt:new Date().toISOString()};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));a.download=`英语拼读巩固备份_${childName()||'未命名'}_${iso(today)}.json`;a.click();URL.revokeObjectURL(a.href)};
+$('importPlan').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(reader.result),plans=Array.isArray(raw)?raw:raw.days;if(!Array.isArray(plans)||!plans.length||plans.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')||!Array.isArray(x.words)))throw new Error('格式应为含 date、words 的数组');data.curriculumPlan=plans;save();fill();alert(`已导入 ${plans.length} 天课程计划。`);}catch(err){alert(`课程计划导入失败：${err.message||'格式不正确'}。`);}finally{e.target.value='';}};reader.readAsText(file)};
 $('importData').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const imported=normalizeBackup(JSON.parse(r.result));data=imported;save();selectedDate=realToday();fill();alert(`导入成功：已恢复 ${data.records.length} 天学习记录。`);}catch(err){alert(`导入失败：${err.message||'备份文件格式不正确'}。原有数据未修改。`);}finally{e.target.value='';}};r.readAsText(f)};
 $('resetData').onclick=()=>{if(confirm('确定清空本手机的全部记录吗？此操作不能恢复；如有需要请先导出备份。')){data={records:[],tests:{},customWords:[],printedPlans:{},wordState:{},historicalSeedVersion:'2026-11-11-real-sheet-v5',correctionSyncVersion:CORRECTION_SYNC_VERSION};save();selectedDate=realToday();fill();alert('本机学习记录已清空。');}};
 let advancedShown=false;
