@@ -38,3 +38,5 @@
 
 /* 保存反馈、计划构成与复习状态。 */
 .plan-summary{margin:8px 0;padding:9px 10px;border-radius:8px;background:#eef7ff;color:#245a7b;font-size:.92rem;font-weight:700}.word-status{display:block;margin:4px 0 0 28px;color:#58716a;font-size:.78rem}.save-toast{position:fixed;z-index:20;left:50%;bottom:18px;transform:translate(-50%,130%);width:min(92vw,560px);display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:12px;background:#173f35;color:#fff;box-shadow:0 8px 26px rgba(0,0,0,.22);transition:transform .25s ease}.save-toast.shown{transform:translate(-50%,0)}.save-toast .secondary{margin:0;white-space:nowrap}@media(max-width:560px){.save-toast{align-items:flex-start;flex-direction:column;bottom:10px}.word-status{margin-left:0}}
+
+.progress-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.progress-grid div{padding:12px 7px;text-align:center;border-radius:9px;background:#edf7f3}.progress-grid b,.progress-grid span{display:block}.progress-grid b{font-size:1.35rem;color:#155346}.progress-grid span{margin-top:3px;font-size:.78rem;color:#58716a}@media(max-width:560px){.progress-grid{grid-template-columns:1fr 1fr}}
