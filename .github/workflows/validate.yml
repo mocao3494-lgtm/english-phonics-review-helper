@@ -15,3 +15,6 @@ jobs:
           grep -q 'function nextPlan' app.js
           grep -q 'normalizeBackup' app.js
           grep -q 'id="planSummary"' index.html
+          grep -q 'function normalizeBackup' app.js
+          grep -q 'function renderProgress' app.js
+          grep -q 'fetch(event.request)' sw.js
