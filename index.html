@@ -6,14 +6,14 @@
   <meta name="theme-color" content="#175c4d" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-  <title>英语拼读每日打��助手</title>
+  <title>英语拼读复习助手</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./upgrade.css?v=20261112-2" />
 </head>
 <body>
   <header>
-    <div class="brand"><span>字母拼读</span><strong>英语拼读每日打印助手</strong></div>
-    <p>每天扫���勾错或输入默写错词；新词、复���词、拼读规则、可汗建议和故事���读均由网页自动安排。</p>
+    <div class="brand"><span>字母拼读</span><strong>英语拼读复习助手</strong></div>
+    <p>每天勾选默写错词并保存；系统会结合今天结果、历史错词和记忆曲线，生成下一次默写清单。</p>
   </header>
   <main><button type="button" class="secondary compact" id="simpleMode">切换为今��简洁模式</button>
     <section class="notice">数据只保存在本手机/浏览器��请定期点击“导出备份”；换手��后用“导入备份”恢复。</section>
@@ -29,8 +29,7 @@
       </div>
       <div class="correction-box" id="correctionBox">
         <h3>② 批改今天默写：只勾选写错的词</h3>
-        <p class="help">打印作业右上角二维码会直接打开这里。日期：<b id="correctionDate"></b>。没有错误就不勾选。</p>
-        <div id="qrAccess" class="qr-access"></div>
+        <p class="help">日期：<b id="correctionDate"></b>。没有错误就不勾选；保存后才会生成下一次正式清单。</p>
         <div id="correctionWords" class="correction-words"></div>
         <div class="actions"><button type="button" class="secondary" id="selectAllErrors">全部勾选</button><button type="button" class="secondary" id="clearAllErrors">全部取消</button></div>
       </div>
@@ -63,13 +62,6 @@
       </details>
     </section>
 
-    <section class="card hidden" id="dailyCard">
-      <h2>当天学习与打印总表 <span id="dailyDate"></span></h2>
-      <p class="help">这是把“每日总表”的内容放进网页后的版本。每天优先完成这里的 4 个小步骤；家长可导出为 WPS 作业或单独打印。</p>
-      <div id="dailyCardContent"></div>
-      <div class="actions"><button class="primary compact" id="exportDailyWorksheet">导出当天总表（WPS .doc）</button><button class="secondary" id="printDailyWorksheet">打印当天总表 / 保存 PDF</button></div>
-    </section>
-
     <section class="card advanced-card" id="test">
       <h2>规则检验：自动出题 + 可选记录得分</h2>
       <p class="help">��方会根据每天的错词、新词和累��错因自动生成检验重点；您不填��数也会自动调整。周末或做完自��题后，再填分数，会让建议更准��。</p>
@@ -89,11 +81,10 @@
     </section>
 
     <section class="card hidden" id="plan">
-      <h2>下一次 40 词默写清单 <span id="nextDate"></span></h2>
+      <h2>下一次需要默写的单词 <span id="nextDate"></span></h2>
       <p id="planSummary" class="plan-summary"></p>
       <p id="planNote" class="help"></p>
       <div id="dictationList" class="dictation-list"></div>
-      <div class="actions"><button class="secondary" id="exportWorksheet">导出下一次 40 词默写作业（.doc）</button><button class="secondary" onclick="window.print()">打印/保存 PDF</button><button class="secondary" id="markAllCorrect">全对也按曲线复习</button></div>
     </section>
 
     <section class="card hidden" id="analysis">
@@ -153,7 +144,7 @@
   <script src="./master-plan.js?v=20261111-1"></script>
   <script src="./learned-vocabulary.js?v=20261112-1"></script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
-<script src="./app.js?v=20261112-10"></script>
+<script src="./app.js?v=20261112-11"></script>
 </body>
 </html>
 
