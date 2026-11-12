@@ -55,8 +55,8 @@
           <option value="r-Controlled Vowels">r 控制元音 ar or er ir ur</option>
           <option value="Inflectional Endings">词尾 ing ed s</option>
           <option value="Nonsense Words">陌生词解码</option>
-          <option value="Reading Fluency">朗读��利度</option>
-          <option value="Books / Early Readers">绘本与早期读物阅���迁移</option>
+          <option value="Reading Fluency">朗读利度</option>
+          <option value="Books / Early Readers">绘本与早期读物阅迁移</option>
           </select>
         </label>
       </details>
@@ -64,14 +64,14 @@
 
     <section class="card advanced-card" id="test">
       <h2>规则检验：自动出题 + 可选记录得分</h2>
-      <p class="help">��方会根据每天的错词、新词和累��错因自动生成检验重点；您不填��数也会自动调整。周末或做完自��题后，再填分数，会让建议更准��。</p>
+      <p class="help">方会根据每天的错词、新词和累错因自动生成检验重点；您不填数也会自动调整。周末或做完自题后，再填分数，会让建议更准。</p>
       <div class="test-grid">
         <label>字母组合辨认 <input id="comboScore" type="number" min="0" max="10" placeholder="0-10" /> /10</label>
-        <label>陌���词读写 <input id="decodeScore" type="number" min="0" max="10" placeholder="0-10" /> /10</label>
+        <label>陌词读写 <input id="decodeScore" type="number" min="0" max="10" placeholder="0-10" /> /10</label>
         <label>Magic e 对比 <input id="magicScore" type="number" min="0" max="4" placeholder="0-4" /> /4</label>
         <label>多音节拆分 <input id="syllableScore" type="number" min="0" max="5" placeholder="0-5" /> /5</label>
       </div>
-      <button class="secondary" id="saveTest">保存检��结果并更新建议</button>
+      <button class="secondary" id="saveTest">保存检结果并更新建议</button>
     </section>
 
     <section class="notice" id="curriculumNotice"></section>
@@ -88,29 +88,29 @@
     </section>
 
     <section class="card hidden" id="analysis">
-      <h2>孩子当前薄弱���分析（由所有错词自动累计）</h2>
+      <h2>孩子当前薄弱分析（由所有错词自动累计）</h2>
       <div id="weaknessContent"></div>
     </section>
 
     <section class="card hidden" id="khanPlan">
-      <h2>明天可汗学院��么学</h2>
+      <h2>明天可汗学院么学</h2>
       <div id="khanContent"></div>
     </section>
 
     <section class="card hidden advanced-card" id="checkPlan">
-      <h2>今日规则检验（由错词自动生成���</h2>
+      <h2>今日规则检验（由错词自动生成</h2>
       <div id="checkContent"></div>
     </section>
 
     <section class="card advanced-card" id="soundCards">
-      <h2>字母��合 音标 音素 规则卡</h2>
-      <p class="help">每天选当天相关的2-3张卡���看组合，读出音素，说例词，最���写一个同规律的新词。音标是帮���家长核对发音的工具；跟读时以���汗学院的声音为准。</p>
+      <h2>字母合 音标 音素 规则卡</h2>
+      <p class="help">每天选当天相关的2-3张卡看组合，读出音素，说例词，最写一个同规律的新词。音标是帮家长核对发音的工具；跟读时以汗学院的声音为准。</p>
       <div id="soundCardContent" class="sound-grid"></div>
-      <p class="help">注意：<b>th、oo���ou、ea</b>等组合在不同单词中可��有不同读音。先掌握卡片上的常��读音；遇到例外词单独标记，不��规则说成绝对正确。</p>
-      <details><summary>家长规则地图：照片里的表怎样使用</summary><p>这些表是<b>��长查规则的地图</b>，不是让孩子���次背完的清单。先找错词里的词���，例如 <b>boots → oo</b>、<b>shirt �� ir</b>、<b>phone → ph + o_e</b>；每天只选 2-3 条规则，完成“看组合说���素 → 圈词块 → 读写陌生同规律词 → 在阅读中再找一次”。同一���合可能有多种读音，先学最常见���对应关系，再把例外单列。</p><p><b>音标说明：</b>本工具以常见英�� IPA 作家长参照；美式中 /əʊ/ 常���作 /oʊ/，r 音也会有差异。孩子��必默写音标，必须能听、说、辨��并用规则读写。</p></details>
+      <p class="help">注意：<b>th、ooou、ea</b>等组合在不同单词中可有不同读音。先掌握卡片上的常读音；遇到例外词单独标记，不规则说成绝对正确。</p>
+      <details><summary>家长规则地图：照片里的表怎样使用</summary><p>这些表是<b>长查规则的地图</b>，不是让孩子次背完的清单。先找错词里的词，例如 <b>boots → oo</b>、<b>shirt  ir</b>、<b>phone → ph + o_e</b>；每天只选 2-3 条规则，完成“看组合说素 → 圈词块 → 读写陌生同规律词 → 在阅读中再找一次”。同一合可能有多种读音，先学最常见对应关系，再把例外单列。</p><p><b>音标说明：</b>本工具以常见英 IPA 作家长参照；美式中 /əʊ/ 常作 /oʊ/，r 音也会有差异。孩子必默写音标，必须能听、说、辨并用规则读写。</p></details>
     </section>
 
-    <section class="card hidden advanced-card" id="weekReport"><h2>本周学习报告</h2><div id="weekReportContent"></div><div class="actions"><button type="button" class="secondary" id="exportWeeklyReport">导出��周报告（WPS .doc）</button></div></section>
+    <section class="card hidden advanced-card" id="weekReport"><h2>本周学习报告</h2><div id="weekReportContent"></div><div class="actions"><button type="button" class="secondary" id="exportWeeklyReport">导出周报告（WPS .doc）</button></div></section>
 
     <section class="card hidden" id="weekend">
       <h2>周末整体复盘</h2>
@@ -120,31 +120,31 @@
     <section class="card hidden advanced-card" id="diagnostics"><h2>诊断信息</h2><p id="diagnosticContent" class="help"></p></section>
 
     <section class="card hidden advanced-card" id="history">
-      <h2>学习��录管理</h2>
-      <p class="help">可查���、修改或删除已保存的日期。修���后重新保存，后续复习计划会随���更新。</p>
+      <h2>学习录管理</h2>
+      <p class="help">可查、修改或删除已保存的日期。修后重新保存，后续复习计划会随更新。</p>
       <div id="historyContent"></div>
     </section>
 
-    <button type="button" class="secondary more-tools" id="toggleAdvanced">显示更多功能（规则卡、��录管理、备份）</button>
+    <button type="button" class="secondary more-tools" id="toggleAdvanced">显示更多功能（规则卡、录管理、备份）</button>
 
     <section class="card tools advanced-card">
       <h2>数据与使用说明</h2>
-      <details><summary>怎么导出到鸿蒙手机/WPS</summary><ol><li>当天学习卡生成后，点“<b>导出当天总表（WPS .doc）</b>”；��需默写时，点“<b>导出下一次 40 ���默写作业（.doc）</b>”。这两种��是可用 WPS 打开的 Word 格式，不是数据备份。</li><li>在鸿蒙手机的下载通知或“文件管理”中找到该 <b>.doc</b> 文件，点“用 WPS Office 打��”。随后可编辑、打印或在 WPS 中另存为 PDF。</li><li>若想直接得到 PDF，点“<b>打印当天总表 / 保存 PDF</b>”，在手机系统打印页选择“��存为 PDF”或“分享至 WPS”。</li><li>“<b>导出备份</b>”是 <b>.json</b> 数据文件，只用于以后导入本工具恢复记录，不用 WPS 打开。</li></ol></details>
-      <details><summary>打印后���样扫码批改、自动排明天复习</summary><ol><li>打印“下一次 40 词默写作业”后，作业右上角会有二维码。孩子写完后，用<b>同一台手机</b>的相机/微信扫一扫二维码。</li><li>扫码会打开当天的“勾选今天写���的词”。只勾选家长判错的词；���临时有别的错词，可直接在上方���今天默写错误词”框内补充。</li><li>点绿色“<b>保存并生成下一次���划</b>”。系统会把当天错词记入：次日必复习、随后第3天/第7天/��14天/第30天继续复现；错得多的词会更频繁出现。</li><li><b>重要：</b>错题记录保存在扫码这台手机的��览器里。请固定用同一台手机扫��，并每周点一次“导出备份”；��手机或清除浏览器数据后，使用��导入备份”恢复。</li></ol></details>
-      <details><summary>可汗学院具体��哪里：选课 布置 查看</summary><ol><li><b>按标准精确找课：</b>点顶部 <b>Search</b>（放大镜）→ <b>Choose Standard</b> → <b>Common Core 1st Grade</b> → <b>CCSS.ELA</b> → <b>CCSS.ELA.RF</b> → <b>CCSS.ELA.RF.1.3</b>。这里是拼读与字母组合主线。</li><li><b>按主题快速找课：</b>点 <b>Reading</b>（阅读）�� 右上角选 <b>1st Grade</b>。按本页��议找课程标题：<b>Final -e & Long Vowel Teams</b>（长元音/元音组合）、<b>r-Controlled Vowels</b>（ar or er ir ur）��<b>Consonant Blends</b>（连缀）、<b>Consonant Digraphs</b>（ch sh th wh）、<b>1-Syllable & 2-Syllable Words</b>（音节）、<b>Reading Fluency</b>（朗读）。</li><li><b>布置顺序：</b>第一次点 <b>Main</b>（主课）；能解释规律并完成陌���词读写，再点 <b>Practice 1</b>、<b>Practice 2</b>。若 Main 分数低或规则��验没过，改点 <b>Basic</b>（基础支���），不要急着刷练习。</li><li><b>���读迁移：</b>每周 2 次点 <b>Books</b>，或在 Reading 找 <b>Early Readers</b>��选一本短书，读 5-10 分钟：让孩��圈/说当天组合，读一句含该组合���句子，再用中文复述一句意思。���本不是每个词都可按自然拼读，���会的词可直接告诉他。</li><li><b>���看掌握：</b>点 <b>Students</b> → <b>Class Reports</b>（班级报告）→ 在 <b>Assignments</b> 看已布置任务，或 <b>All Progress</b> 看全部历史记录。看���件事：Main/Basic 是否完成、尝试��得分是否提升、纸笔陌生词检验��否同时达标。单次高分不等于规��掌握。</li></ol></details>
-      <details><summary>怎么区分会写单词和会拼��规则</summary><p>会写旧词只说明孩���记住了这个词；只有“能说出组���读音、能读写没背过但规律相同���词、能区分 hop/hope 这类对比词”才算真正掌握规则。本页面的“本周规则检验”专门记录这三件事。</p></details>
-      <label>孩子昵称 <small>用于区分备份文件，不填写也可以。</small><input id="childName" type="text" maxlength="30" placeholder="例如：小��" /></label>
-      <label>规则例外词 <small>每行一个；这些词将按“视觉���写”处理，不再套用自动拼读规���。</small><textarea id="ruleExceptions" rows="3" placeholder="例如：one&#10;said"></textarea></label>
-      <label class="upload">导入下一阶段课程计划<input id="importPlan" type="file" accept="application/json" /></label><p class="help">课程计划 JSON 为日期数组，每项包含 date、words���focus；导入后将优先覆盖同日期��固定计划。</p>
-      <div class="actions"><button class="secondary" id="exportData">导出备份</button><label class="upload">��入备份<input id="importData" type="file" accept="application/json" /></label><button class="danger" id="resetData">清空全部数���</button></div>
+      <details><summary>怎么导出到鸿蒙手机/WPS</summary><ol><li>当天学习卡生成后，点“<b>导出当天总表（WPS .doc）</b>”；需默写时，点“<b>导出下一次 40 默写作业（.doc）</b>”。这两种是可用 WPS 打开的 Word 格式，不是数据备份。</li><li>在鸿蒙手机的下载通知或“文件管理”中找到该 <b>.doc</b> 文件，点“用 WPS Office 打”。随后可编辑、打印或在 WPS 中另存为 PDF。</li><li>若想直接得到 PDF，点“<b>打印当天总表 / 保存 PDF</b>”，在手机系统打印页选择“存为 PDF”或“分享至 WPS”。</li><li>“<b>导出备份</b>”是 <b>.json</b> 数据文件，只用于以后导入本工具恢复记录，不用 WPS 打开。</li></ol></details>
+      <details><summary>打印后样扫码批改、自动排明天复习</summary><ol><li>打印“下一次 40 词默写作业”后，作业右上角会有二维码。孩子写完后，用<b>同一台手机</b>的相机/微信扫一扫二维码。</li><li>扫码会打开当天的“勾选今天写的词”。只勾选家长判错的词；临时有别的错词，可直接在上方今天默写错误词”框内补充。</li><li>点绿色“<b>保存并生成下一次划</b>”。系统会把当天错词记入：次日必复习、随后第3天/第7天/14天/第30天继续复现；错得多的词会更频繁出现。</li><li><b>重要：</b>错题记录保存在扫码这台手机的览器里。请固定用同一台手机扫，并每周点一次“导出备份”；手机或清除浏览器数据后，使用导入备份”恢复。</li></ol></details>
+      <details><summary>可汗学院具体哪里：选课 布置 查看</summary><ol><li><b>按标准精确找课：</b>点顶部 <b>Search</b>（放大镜）→ <b>Choose Standard</b> → <b>Common Core 1st Grade</b> → <b>CCSS.ELA</b> → <b>CCSS.ELA.RF</b> → <b>CCSS.ELA.RF.1.3</b>。这里是拼读与字母组合主线。</li><li><b>按主题快速找课：</b>点 <b>Reading</b>（阅读） 右上角选 <b>1st Grade</b>。按本页议找课程标题：<b>Final -e & Long Vowel Teams</b>（长元音/元音组合）、<b>r-Controlled Vowels</b>（ar or er ir ur）<b>Consonant Blends</b>（连缀）、<b>Consonant Digraphs</b>（ch sh th wh）、<b>1-Syllable & 2-Syllable Words</b>（音节）、<b>Reading Fluency</b>（朗读）。</li><li><b>布置顺序：</b>第一次点 <b>Main</b>（主课）；能解释规律并完成陌词读写，再点 <b>Practice 1</b>、<b>Practice 2</b>。若 Main 分数低或规则验没过，改点 <b>Basic</b>（基础支），不要急着刷练习。</li><li><b>读迁移：</b>每周 2 次点 <b>Books</b>，或在 Reading 找 <b>Early Readers</b>选一本短书，读 5-10 分钟：让孩圈/说当天组合，读一句含该组合句子，再用中文复述一句意思。本不是每个词都可按自然拼读，会的词可直接告诉他。</li><li><b>看掌握：</b>点 <b>Students</b> → <b>Class Reports</b>（班级报告）→ 在 <b>Assignments</b> 看已布置任务，或 <b>All Progress</b> 看全部历史记录。看件事：Main/Basic 是否完成、尝试得分是否提升、纸笔陌生词检验否同时达标。单次高分不等于规掌握。</li></ol></details>
+      <details><summary>怎么区分会写单词和会拼规则</summary><p>会写旧词只说明孩记住了这个词；只有“能说出组读音、能读写没背过但规律相同词、能区分 hop/hope 这类对比词”才算真正掌握规则。本页面的“本周规则检验”专门记录这三件事。</p></details>
+      <label>孩子昵称 <small>用于区分备份文件，不填写也可以。</small><input id="childName" type="text" maxlength="30" placeholder="例如：小" /></label>
+      <label>规则例外词 <small>每行一个；这些词将按“视觉写”处理，不再套用自动拼读规。</small><textarea id="ruleExceptions" rows="3" placeholder="例如：one&#10;said"></textarea></label>
+      <label class="upload">导入下一阶段课程计划<input id="importPlan" type="file" accept="application/json" /></label><p class="help">课程计划 JSON 为日期数组，每项包含 date、wordsfocus；导入后将优先覆盖同日期固定计划。</p>
+      <div class="actions"><button class="secondary" id="exportData">导出备份</button><label class="upload">入备份<input id="importData" type="file" accept="application/json" /></label><button class="danger" id="resetData">清空全部数</button></div>
     </section>
   </main>
   <div id="saveToast" class="save-toast" role="status" aria-live="polite"><span id="saveToastText"></span><button type="button" class="secondary compact" id="toastExport" hidden></button></div>
-  <footer>每日流程：可汗��律课 8-10 分钟 → 新词词块预习 5 分钟 → 规律朗读迁移 5 分钟 → ��写 8-10 分钟 → 录入错词 3 分钟。</footer>
+  <footer>每日流程：可汗律课 8-10 分钟 → 新词词块预习 5 分钟 → 规律朗读迁移 5 分钟 → 写 8-10 分钟 → 录入错词 3 分钟。</footer>
   <script src="./master-plan.js?v=20261111-1"></script>
   <script src="./learned-vocabulary.js?v=20261112-1"></script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
-<script src="./app.js?v=20261112-12"></script>
+<script src="./app.js?v=20261112-13"></script>
 </body>
 </html>
 
