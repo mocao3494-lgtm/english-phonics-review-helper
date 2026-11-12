@@ -386,8 +386,9 @@ function itemFor(word, metas=[]){
   const own=metas.find(x=>norm(x.word)===norm(word))||{};
   const planned=masterWordInfo(word);
   const known=WORD_INFO[norm(word)]||[];
+  const course=learnedVocabulary().find(x=>norm(x.word||'')===norm(word))||{};
   const ids=ruleOf(word);
-  return {word:norm(word),gloss:own.gloss||planned.cn||known[0]||'请按教材核对中文',ipa:own.ipa||planned.ipa||known[1]||'请按教材��对音标',pos:own.pos||POS_INFO[norm(word)]||'',chunk:planned.chunk||known[2]||ids.map(id=>PATTERNS.find(p=>p.id===id)?.name).join('���')||'先圈元音/辅音词块'};
+  return {word:norm(word),gloss:own.gloss||planned.cn||known[0]||course.gloss||'请按教材核对中文',ipa:own.ipa||planned.ipa||known[1]||course.ipa||'请按教材核对音标',pos:own.pos||POS_INFO[norm(word)]||'',chunk:planned.chunk||known[2]||ids.map(id=>PATTERNS.find(p=>p.id===id)?.name).join('、')||'先圈元音/辅音词块'};
 }
 function masterWordInfo(word){
   const target=norm(word);
