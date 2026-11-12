@@ -144,7 +144,7 @@ function showActionToast(message,label,action){
   const button=$('toastExport');button.hidden=!label;button.textContent=label||'';button.onclick=()=>{action?.();toast.classList.remove('shown');};
   toast.classList.add('shown');clearTimeout(showActionToast.timer);showActionToast.timer=setTimeout(()=>toast.classList.remove('shown'),10000);
 }
-function showSaveToast(message,target){showActionToast(message,target?`导出 ${target} 作业`:'',()=>exportWorksheet());}
+function showSaveToast(message){showActionToast(message);}
 function normalizeBackup(candidate){
   if(!candidate||typeof candidate!=='object'||Array.isArray(candidate)||!Array.isArray(candidate.records))throw new Error('备份缺少学习记录');
   const validDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -459,15 +459,15 @@ function downloadDoc(name,html){const blob=new Blob(['\ufeff',html],{type:'appli
 function openPrint(title,body){const win=window.open('','_blank');if(!win){alert('浏览器阻���了新页面，请允许弹出窗口后再���，或改用“导出 WPS”。');return}win.document.write(worksheetHtml(title,body));win.document.close();win.focus();setTimeout(()=>win.print(),350)}
 function render(){const {target,list}=currentPlan(),next=nextPlan(); const dailyRecord=currentDailyRecord(target,list); const last=data.records.at(-1); const ws=weakness(); const targetFocus=masterPlanFor(target)?.focus||''; const rec=khanRecommendation(ws,targetFocus);
   renderCorrectionPicker();renderCorrectionQr();
-  if(last||Object.values(data.tests||{}).some(x=>x!=='')){['plan','analysis','khanPlan','checkPlan','weekend','history','progress','weekReport'].forEach(id=>$(id).classList.remove('hidden'));}
-  $('dailyCard').classList.remove('hidden');$('dailyDate').textContent='（'+dateLabel(target)+'���';$('dailyCardContent').innerHTML=dailyCardMarkup(dailyRecord);
+  ['plan'].forEach(id=>$(id).classList.remove('hidden'));
+  if(last||Object.values(data.tests||{}).some(x=>x!=='')){['analysis','khanPlan','checkPlan','weekend','history','progress','weekReport'].forEach(id=>$(id).classList.remove('hidden'));}
   $('nextDate').textContent='（'+next.target+'）';
   const words=next.list.length?next.list:[];
   const groups={newWords:0,errorWords:0,frequentErrors:0,learnedReview:0,other:0};words.forEach(x=>{const tag=x.tag||'';if(tag.includes('新词'))groups.newWords++;else if(tag.includes('错词'))groups.errorWords++;else if(tag.includes('高频'))groups.frequentErrors++;else if(tag.includes('已学'))groups.learnedReview++;else groups.other++;});
-  $('planSummary').textContent=words.length?`本次构成：新词 ${groups.newWords} 个｜错词复习 ${groups.errorWords} 个｜高频错词 ${groups.frequentErrors} 个｜已学复习 ${groups.learnedReview} 个`:'';
+  $('planSummary').textContent=next.awaitingCorrection?'等待今天批改后生成':(words.length?`本次构成：新词 ${groups.newWords} 个｜错词复习 ${groups.errorWords} 个｜高频错词 ${groups.frequentErrors} 个｜已学复习 ${groups.learnedReview} 个`:'');
   const state=data.wordState||rebuildWordState();
-  const metas=allMetas();$('dictationList').innerHTML=words.map((x,i)=>{const progress=state[norm(x.word)],detail=itemFor(x.word,metas);const reason=(x.tag||'').includes('错词')?'因��期默写出错，需要优先复习':(x.tag||'').includes('新词')?'今天的新词，���次进入默写':'按间隔复习曲线抽���';const status=progress?`${reason}｜已错 ${progress.errors} 次；下次复习 ${progress.nextDue}`:`${reason}｜首次出现或��础抽查`;return `<div class="word"><b>${i+1}.</b> ${highlightEnglish(x.word)} <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><span class="tag">${escapeHtml(x.tag||'')}</span><small class="word-detail">${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small class="word-status">${escapeHtml(status)}</small></div>`}).join('')||'<p>先���存一次“今天录入”，系统才会���成下一次清单。</p>';
-  $('planNote').textContent=words.length<40?`目前已排 ${list.length} 个词。请在“明天固定��学的5个新词”补足新词；其余位���会随记录增加，按间隔复习填充���不会为凑40题重复同一个词。`:'40词已由明日新词、次日/第3/7/14/30��复习、高频错词、规律词和已掌��抽查组合。';
+  const metas=allMetas();$('dictationList').innerHTML=words.map((x,i)=>{const progress=state[norm(x.word)],detail=itemFor(x.word,metas);const reason=(x.tag||'').includes('错词')?'因上次默写出错，需要优先复习':(x.tag||'').includes('新词')?'新学习的单词，首次进入默写':'按间隔复习曲线抽取';const status=progress?`${reason}｜已错 ${progress.errors} 次；下次复习 ${progress.nextDue}`:`${reason}｜首次出现或基础抽查`;return `<div class="word"><b>${i+1}.</b> ${highlightEnglish(x.word)} <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><span class="tag">${escapeHtml(x.tag||'')}</span><small class="word-detail">${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small class="word-status">${escapeHtml(status)}</small></div>`}).join('')||(next.awaitingCorrection?'<p>请先勾选今天写错的单词并点击“保存错词并生成明天复习”。保存后，系统才会根据今天的结果、历史错词和记忆曲线生成下一次清单。</p>':'<p>暂时没有需要默写的单词。</p>');
+  $('planNote').textContent=next.awaitingCorrection?'明天固定的 5 个新词可在上方“今天的新词”中预习；复习词必须等今天批改保存后才会定稿。':(words.length<40?`目前已排 ${words.length} 个词；系统不会为凑数量重复同一个词。`:'本次清单已结合明日新词、间隔复习、高频错词和已学词抽查。');
   $('weaknessContent').innerHTML=ws.length?ws.map(w=>`<div class="weak"><b>${w.name}<br><span class="score-bad">累���错误 ${w.count} 次；近7次记录 ${w.recent} 次</span></b><span>${w.why}<br><small>建议检验：${w.test}</small></span></div>`).join(''):'<p>还没有录入错词。录���后会按字母组合、元音、音节、���语、词尾和不规则词形自动分析���</p>';
   $('khanContent').innerHTML=`<p><b>${rec.title}</b></p><ol class="rule-list"><li>点 <b>Reading</b> → 右上角选 <b>1st Grade</b>。</li><li>找 <b>${rec.course}</b>���</li><li>今天点 <b>${rec.card}</b>。</li><li>${rec.text}</li><li>完成后让孩子���：“我今天学的是 ______，它常读 ______，例如 ______。”说不出就不���掌握。</li><li><b>再加 5 分钟迁移���</b>Reading Fluency 读一小段，或每�� 2 次 Books / Early Readers。让孩子在���物里圈出今天的组合，读出含它���一句话；图书里遇到不规则词不���来考拼读规则。</li></ol>`;
   const t=data.tests||{}; const rows=[['字母组合��认',t.combo,10,8],['陌生词读写',t.decode,10,8],['Magic e 对比',t.magic,4,3],['多音节拆分',t.syllable,5,4]]; $('checkContent').innerHTML='<p><b>系统根据当前最��的薄弱项生成：</b></p><ol class="rule-list">'+autoChecks(ws).map(x=>`<li>${x}</li>`).join('')+'</ol><p><b>您填写过的检验结果：</b></p><ul class="rule-list">'+rows.map(([name,score,total,pass])=>`<li><b>${name}</b>：${score??'未填'} / ${total}，${score!==undefined&&score!==''?(+score>=pass?'<span class="score-good">达到规则掌握线</span>':'<span class="score-bad">未达标：回到 Main/Basic + 陌生词纸笔练习</span>'):'可不填；系统已按错词自动��整。'}</li>`).join('')+'</ul>';
@@ -519,9 +519,9 @@ function saveRecord(){
   data.records=data.records.filter(r=>r.date!==date);
   const record={date,newWords,errors,nextNewWords,newItems,errorItems,nextNewItems,dictationItems:cloneItems(dictationItems),reviewedWords:reviewedWords.length?reviewedWords:newWords,khan:$('khanDone').value,masterFocus:master?.focus||''};
   data.records.push(record);data.records.sort((a,b)=>a.date.localeCompare(b.date));rebuildWordState();
-  // 立即保存“���天的40词”；明天录入批改结果��系统就知道哪些词实际参与过默��。
+  // 保存下一次清单；明天录入批改结果后，系统就知道哪些词实际参与过默写。
   record.nextPlan=buildPlan(plus(date,1)).list;
-  clearDraft();save();render();const next=nextPlan();showSaveToast(`已保存 ${date}：错词 ${errors.length} 个；已生成 ${next.target} 的 ${next.list.length} 词��划。`,next.target);document.getElementById('plan').scrollIntoView({behavior:'smooth'});
+  clearDraft();save();render();const next=nextPlan();showSaveToast(`已保存 ${date}：错词 ${errors.length} 个；已生成 ${next.target} 的 ${next.list.length} 个待默写单词。`);document.getElementById('plan').scrollIntoView({behavior:'smooth'});
 }
 function saveTest(){data.tests={combo:$('comboScore').value,decode:$('decodeScore').value,magic:$('magicScore').value,syllable:$('syllableScore').value};save();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -626,10 +626,7 @@ $('addCustomWords').onclick=addCustomWords;
 $('childName').onchange=()=>{data.profile={...(data.profile||{}),childName:$('childName').value.trim()};save();};$('ruleExceptions').onchange=()=>{data.ruleExceptions=parseLines($('ruleExceptions').value);save();render();};document.addEventListener('click',e=>{const button=e.target.closest('[data-speak]');if(button)speakWord(button.dataset.speak);});
 $('selectAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=true);syncCheckedErrors();};
 $('clearAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=false);syncCheckedErrors();};
-$('exportWorksheet').onclick=exportWorksheet;
-$('exportDailyWorksheet').onclick=exportDailyWorksheet;$('exportWeeklyReport').onclick=()=>{const weekly=weeklyReport();downloadDoc(`英语拼读周报_${iso(new Date())}.doc`,worksheetHtml('英语���读周报',weekly.html));};
-$('printDailyWorksheet').onclick=printDailyWorksheet;
-$('markAllCorrect').onclick=()=>{alert('本次“��对”只说明这批词本次正确。请��保留它们在第3天、第7天的安排，并在周末做陌生词规则检验。')};
+$('exportWeeklyReport').onclick=()=>{const weekly=weeklyReport();downloadDoc(`英语拼读周报_${iso(new Date())}.doc`,worksheetHtml('英语���读周报',weekly.html));};
 $('exportData').onclick=()=>{data.lastBackupAt=new Date().toISOString();save();const backup={...data,backupVersion:3,appName:'英语拼���每日打印助手',exportedAt:data.lastBackupAt};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));a.download=`英语拼读巩固备份_${childName()||'未命名'}_${iso(today)}.json`;a.click();URL.revokeObjectURL(a.href)};
 $('importPlan').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(reader.result),plans=Array.isArray(raw)?raw:raw.days,dates=new Set();if(!Array.isArray(plans)||!plans.length||plans.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')||!Array.isArray(x.words)||!x.words.length||dates.has(x.date)||(dates.add(x.date),false)))throw new Error('日期不能重复，且每一天必��有至少一个单词');data.curriculumPlan=plans;save();fill();alert(`已导入 ${plans.length} 天课程计划。`);}catch(err){alert(`课程计划导入失败：${err.message||'格式不正确'}。`);}finally{e.target.value='';}};reader.readAsText(file)};
 $('importData').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const imported=normalizeBackup(JSON.parse(r.result));data=imported;save();selectedDate=realToday();fill();alert(`导入成��：已恢复 ${data.records.length} 天学��记录。`);}catch(err){alert(`导入失败���${err.message||'备份文件格式不正确'}。原有数据未修改。`);}finally{e.target.value='';}};r.readAsText(f)};
