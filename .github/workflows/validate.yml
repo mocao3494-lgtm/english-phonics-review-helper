@@ -11,6 +11,7 @@ jobs:
       - run: node --check app.js
       - run: node --check master-plan.js
       - run: node --check sw.js
+      - run: node tests/business-regression.js
       - run: |
           grep -q 'function nextPlan' app.js
           grep -q 'normalizeBackup' app.js
