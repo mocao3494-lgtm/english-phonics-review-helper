@@ -42,3 +42,5 @@
 .progress-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.progress-grid div{padding:12px 7px;text-align:center;border-radius:9px;background:#edf7f3}.progress-grid b,.progress-grid span{display:block}.progress-grid b{font-size:1.35rem;color:#155346}.progress-grid span{margin-top:3px;font-size:.78rem;color:#58716a}@media(max-width:560px){.progress-grid{grid-template-columns:1fr 1fr}}
 
 .simple-mode #dailyCard,.simple-mode #test,.simple-mode #plan,.simple-mode #analysis,.simple-mode #khanPlan,.simple-mode #checkPlan,.simple-mode #soundCards,.simple-mode #weekend,.simple-mode .more-tools,.simple-mode .tools,.simple-mode #progress,.simple-mode #history,.simple-mode #diagnostics{display:none!important}.simple-mode #entry{margin-top:8px}
+
+.speak-word{border:0;background:#dff0e9;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px}.weekly-report{line-height:1.7}.weekly-report p{padding:8px 10px;background:#f4f8f5;border-radius:8px}.simple-mode #weekReport{display:none!important}
