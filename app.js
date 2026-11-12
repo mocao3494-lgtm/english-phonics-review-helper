@@ -534,7 +534,7 @@ function saveRecord(){
   data.records.push(record);data.records.sort((a,b)=>a.date.localeCompare(b.date));rebuildWordState();
   // 保存下一次清单；明天录入批改结果后，系统就知道哪些词实际参与过默写。
   record.nextPlan=buildPlan(plus(date,1)).list;
-  clearDraft();save();render();const next=nextPlan(),health=planHealth(next.target,next.list);if(!health.ok){alert(`已保存今天的错词，但下一次清单校验未通过：缺少 ${health.missing.join('、')||'固定新词'}。请不要使用该清单。`);return;}showSaveToast(`已保存 ${date}：错词 ${errors.length} 个；已生成 ${next.target} 的 ${next.list.length} 个待默写单词。`);document.getElementById('plan').scrollIntoView({behavior:'smooth'});
+  clearDraft();save();render();const next=nextPlan(),health=planHealth(next.target,next.list);if(!health.ok){alert(`已保存今天的错词，但下一次清单校验未通过：缺少 ${health.missing.join('、')||'固定新词'}。请不要使用该清单。`);return;}const backupDue=!data.lastBackupAt||Date.now()-new Date(data.lastBackupAt).getTime()>7*86400000;showActionToast(`已保存 ${date}：错词 ${errors.length} 个；已生成 ${next.target} 的 ${next.list.length} 个待默写单词。${backupDue?' 建议现在备份一次。':''}`,backupDue?'导出备份':'',backupDue?()=>$('exportData').click():undefined);document.getElementById('plan').scrollIntoView({behavior:'smooth'});
 }
 function saveTest(){data.tests={combo:$('comboScore').value,decode:$('decodeScore').value,magic:$('magicScore').value,syllable:$('syllableScore').value};save();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
