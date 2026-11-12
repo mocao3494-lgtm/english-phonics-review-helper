@@ -356,6 +356,9 @@ function currentPlan(){
 function nextPlan(){
   const {target:currentDate}=currentPlan();
   const target=plus(currentDate,1);
+  // 复习词必须等今天批改保存后才会定稿；批改前只允许查看课程表中的固定新词预告。
+  const completed=data.records.some(r=>r.date===currentDate&&!r.seed);
+  if(!completed)return {target,list:[],awaitingCorrection:true};
   return {target,list:planForDate(target)};
 }
 function planForDate(date){
