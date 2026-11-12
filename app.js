@@ -14,6 +14,13 @@ let selectedDate='';
 const realToday=()=>iso(new Date());
 const queryItems=reviewMode?(query.get('items')||'').split('|').map(norm).filter(Boolean).map(word=>({word,tag:'当日默写'})):[];
 data.printedPlans=data.printedPlans&&typeof data.printedPlans==='object'?data.printedPlans:{};
+// 历史错题本导入后，11 月 12 日若已被旧版本生成/打印，也必须重新按最新数据排复习词。
+const HISTORICAL_ERROR_DATA_VERSION='2026-11-12-history-v2';
+if(data.historicalErrorDataVersion!==HISTORICAL_ERROR_DATA_VERSION){
+  delete data.printedPlans['2026-11-12'];
+  data.historicalErrorDataVersion=HISTORICAL_ERROR_DATA_VERSION;
+  localStorage.setItem(KEY,JSON.stringify(data));
+}
 const allMasterPlans=()=>[...(data.curriculumPlan||[]),...(window.MASTER_DAILY_PLAN||[])];
 const masterPlanFor=date=>allMasterPlans().find(x=>x.date===date);
 // 从 0 级、1 级和当前已学的 2 级教材整理出的长期复习池。它不等同于错题本：
