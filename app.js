@@ -486,7 +486,7 @@ function renderCorrectionPicker(){
   const list=planned.length?planned:(master?.words||[]).map(x=>({...x,tag:'今天新词'}));
   const selected=new Set(parseEntries($('errorWords').value).map(x=>x.word));
   $('correctionDate').textContent=date;
-  const metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{const detail=itemFor(x.word,metas);return `<label class="correction-choice"><input type="checkbox" value="${escapeHtml(x.word)}" ${selected.has(norm(x.word))?'checked':''}><span>${i+1}. <b>${highlightEnglish(x.word)}</b><small>${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small>${escapeHtml(x.tag||'')}</small></span></label>`}).join(''):'<p>暂时没有可勾选的词。请在“补充功能”中确认日期后重新载入。</p>';
+  const metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{const detail=itemFor(x.word,metas);return `<label class="correction-choice"><input type="checkbox" value="${escapeHtml(x.word)}" ${selected.has(norm(x.word))?'checked':''}><span>${i+1}. <b>${highlightEnglish(x.word)}</b> <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><small>${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small>${escapeHtml(x.tag||'')}</small></span></label>`}).join(''):'<p>暂时没有可勾选的词。请在“补充功能”中确认日期后重新载入。</p>';
   document.querySelectorAll('#correctionWords input').forEach(input=>input.onchange=syncCheckedErrors);
 }
 function renderCorrectionQr(){
