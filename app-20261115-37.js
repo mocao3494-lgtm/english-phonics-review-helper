@@ -159,21 +159,11 @@ function syncTimeText(value){if(!value)return '尚未同步';const date=new Date
 function updateSyncNotice(){const notice=$('dataNotice');if(!notice)return;if(cloudSession&&cloudUserId()){notice.textContent=`☁ 云端同步已开启：每次保存会自动上传。最近同步：${syncTimeText(data.cloudLastSyncAt||data.cloudUpdatedAt)}。`;notice.classList.add('cloud-notice');}else{notice.textContent='数据目前仅保存在本机浏览器；登录云端同步后，保存会自动上传。';notice.classList.remove('cloud-notice');}}
 function cloudStatus(text,tone=''){const el=$('cloudStatus');if(el){el.textContent=text;el.className='cloud-status '+tone;}updateSyncNotice();}
 function decodeJwt(token){try{return JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))));}catch{return null;}}
-function readCloudSession(){
-  const hash=new URLSearchParams(location.hash.slice(1));
-  cloudRecoveryMode=hash.get('type')==='recovery';
-  const token=hash.get('access_token'),refresh=hash.get('refresh_token');
-  if(token){const session={access_token:token,refresh_token:refresh||'',user:decodeJwt(token),savedAt:Date.now()};localStorage.setItem(CLOUD_SYNC.sessionKey,JSON.stringify(session));history.replaceState(null,'',location.pathname+location.search);return session;}
-  try{return JSON.parse(localStorage.getItem(CLOUD_SYNC.sessionKey)||'null');}catch{return null;}
-}
-async function cloudRequest(path,options={}){
-  const headers={apikey:CLOUD_SYNC.key,'Content-Type':'application/json',...(options.headers||{})};
-  if(cloudSession?.access_token)headers.Authorization='Bearer '+cloudSession.access_token;
-  const response=await fetch(CLOUD_SYNC.url+path,{...options,headers});
-  if(!response.ok)throw new Error((await response.text()).slice(0,180)||'云端服务暂不可用');
-  const body=await response.text();
-  return body?JSON.parse(body):null;
-}
+function readCloudSession(){const hash=new URLSearchParams(location.hash.slice(1));cloudRecoveryMode=hash.get('type')==='recovery';const token=hash.get('access_token'),refresh=hash.get('refresh_token');if(token){const session={access_token:token,refresh_token:refresh||'',user:decodeJwt(token),savedAt:Date.now()};localStorage.setItem(CLOUD_SYNC.sessionKey,JSON.stringify(session));history.replaceState(null,'',location.pathname+location.search);return session;}try{return JSON.parse(localStorage.getItem(CLOUD_SYNC.sessionKey)||'null');}catch{return null;}}
+function cloudTokenExpired(){const exp=decodeJwt(cloudSession?.access_token||'')?.exp;return !!exp&&Date.now()>=((exp-30)*1000);}
+function expireCloudSession(){localStorage.removeItem(CLOUD_SYNC.sessionKey);cloudSession=null;renderCloudControls();cloudStatus('登录已过期，请重新用密码登录；本机学习记录不会丢失。','warn');}
+async function refreshCloudSession(){if(!cloudSession?.refresh_token)return false;try{const response=await fetch(CLOUD_SYNC.url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:CLOUD_SYNC.key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:cloudSession.refresh_token})});if(!response.ok){expireCloudSession();return false;}const payload=await response.json();cloudSession={access_token:payload.access_token,refresh_token:payload.refresh_token||cloudSession.refresh_token,user:decodeJwt(payload.access_token),savedAt:Date.now()};localStorage.setItem(CLOUD_SYNC.sessionKey,JSON.stringify(cloudSession));return true;}catch{return false;}}
+async function cloudRequest(path,options={},retried=false){if(!path.startsWith('/auth/v1/token')&&cloudSession&&cloudTokenExpired())await refreshCloudSession();const headers={apikey:CLOUD_SYNC.key,'Content-Type':'application/json',...(options.headers||{})};if(cloudSession?.access_token)headers.Authorization='Bearer '+cloudSession.access_token;const response=await fetch(CLOUD_SYNC.url+path,{...options,headers});const body=await response.text();if(!response.ok){if(!retried&&/JWT expired|invalid jwt|token.*expired/i.test(body)&&await refreshCloudSession())return cloudRequest(path,options,true);if(/JWT expired|invalid jwt|token.*expired/i.test(body))expireCloudSession();throw new Error(body.slice(0,180)||'云端服务暂不可用');}return body?JSON.parse(body):null;}
 function cloudUserId(){return cloudSession?.user?.sub||decodeJwt(cloudSession?.access_token||'')?.sub||'';}
 function mountCloudSync(){
   const notice=document.querySelector('.notice');if(!notice||$('cloudSync'))return;
@@ -285,6 +275,8 @@ async function cloudPull(){
 function queueCloudPush(){if(cloudSession&&cloudUserId())setTimeout(()=>cloudPush(),80);}
 async function setupCloudSync(){
   mountCloudSync();cloudSession=readCloudSession();renderCloudControls();updateSyncNotice();
+  if(cloudSession&&cloudTokenExpired()&&!(await refreshCloudSession())){cloudReady=true;return;}
+  renderCloudControls();
   if(cloudSession&&cloudUserId())cloudStatus(data.cloudLastSyncAt?'云端同步已开启。':'已登录：首次请选择“上传本机记录”或“下载云端记录”。','ok');
   cloudReady=true;
 }
