@@ -21,6 +21,7 @@
     <section class="card input-card" id="entry">
       <h1>今天只做 3 步</h1>
       <p class="help"><b>① 学新词 → ② 默写后勾错词 → ③ 保存。</b>系统会自动结合历史错词与记忆曲线生成下一次复习。</p>
+      <p class="help" id="lateCorrectionHint"></p>
       <div class="today-words" id="todayWordsPanel">
         <p class="eyebrow">今天的新词</p>
         <h2 id="todayWordDate">正在载入…</h2>
@@ -39,6 +40,7 @@
       <button class="primary" id="saveAndPlan">③ 保存错词并生成下一次复习</button>
       <details class="optional-input"><summary>补充功能（平时不用点）</summary>
         <label>日期 <input id="studyDate" type="date" /></label>
+        <button type="button" class="secondary compact" id="returnToday">回到今天</button>
         <button type="button" class="secondary compact" id="fillMasterPlan">重新载入当天新词</button>
         <p class="help" id="masterPlanHint"></p>
         <label>临时新增默写词 <small>每行一个英文；也可写“英文 | 中文 | 音标”。</small>
@@ -140,11 +142,11 @@
     </section>
   </main>
   <div id="saveToast" class="save-toast" role="status" aria-live="polite"><span id="saveToastText"></span><button type="button" class="secondary compact" id="toastExport" hidden></button></div>
-  <footer>每日流程：可汗律课 8-10 分钟 → 新词词块预习 5 分钟 → 规律朗读迁移 5 分钟 → 写 8-10 分钟 → 录入错词 3 分钟。</footer>
+  <footer>每日流程：新词预习 → 默写 → 勾选错词 → 保存并生成下一次复习。<button type="button" class="secondary compact" id="refreshApp">刷新到最新版本</button></footer>
   <script src="./master-plan.js?v=20261111-1"></script>
   <script src="./learned-vocabulary.js?v=20261112-1"></script>
-  <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
-<script src="./app.js?v=20261112-15"></script>
+  <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=20261115-1',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));}</script>
+<script src="./app.js?v=20261115-16"></script>
 </body>
 </html>
 
