@@ -1,0 +1,31 @@
+/* 版本 20261115-28：聚焦每日学习和补批改操作 */
+:root{--action:#175c4d;--soft:#edf7f3;--focus:#fff7de}
+#entry{max-width:1120px;margin:0 auto}
+#todayWordsPanel{padding:20px 24px;border:1px solid #a9d9cc;border-radius:18px;background:linear-gradient(135deg,#edf9f5,#f7fcfa)}
+#todayWordsPanel .eyebrow{margin:0 0 7px;font-size:15px;font-weight:800;color:#3d7166}
+#todayWordsPanel h2{margin:0;font-size:clamp(24px,4vw,34px);line-height:1.25}
+#todayWordsPanel .word-chips{margin-top:14px}
+#correctionBox{margin-top:18px;padding:22px 24px;border:2px solid #9fd8c8;border-radius:18px;background:#fbfffd}
+#correctionBox h3{margin:0 0 8px;font-size:24px}
+.correction-controls{display:grid;grid-template-columns:minmax(180px,1fr) minmax(210px,1.35fr);gap:12px;margin:16px 0 10px}
+.correction-controls label{display:grid;gap:6px;font-weight:800;color:#265e52}
+.correction-controls select{width:100%;padding:11px 12px;border:1px solid #9bcbbd;border-radius:10px;background:#fff;color:#183b35;font:inherit}
+#correctionWords{max-height:min(52vh,540px);overflow:auto;padding-right:6px}
+#correctionWords::-webkit-scrollbar{width:8px}
+#correctionWords::-webkit-scrollbar-thumb{background:#a8c9be;border-radius:99px}
+#correctionBox .actions{position:sticky;bottom:0;margin:16px -4px -4px;padding:12px 4px 4px;background:linear-gradient(0deg,#fbfffd 78%,transparent)}
+@media (max-width:640px){
+  #entry{padding:0 12px}
+  #todayWordsPanel,#correctionBox{padding:17px 16px;border-radius:15px}
+  #todayWordsPanel h2{font-size:26px}
+  #correctionBox h3{font-size:21px}
+  .correction-controls{grid-template-columns:1fr;gap:9px}
+  #correctionWords{max-height:48vh}
+}
+
+/* 云端同步：首次只需邮箱登录，日常自动上传 */
+.cloud-sync{max-width:1120px;margin:12px auto;padding:13px 16px;border:1px solid #9dcfc0;border-radius:14px;background:#f1fbf7;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.cloud-sync b{font-size:17px;color:#175c4d;margin-right:10px}.cloud-status{font-size:14px;color:#58716a}.cloud-status.ok{color:#167a58}.cloud-status.warn{color:#9a5b16}
+.cloud-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.cloud-controls input{min-width:188px;padding:8px 10px;border:1px solid #9dcfc0;border-radius:9px;font:inherit}.cloud-email{font-size:14px;color:#265e52;font-weight:700}
+@media(max-width:720px){.cloud-sync{margin:10px 12px;display:block}.cloud-sync>div:first-child{margin-bottom:10px}.cloud-controls{justify-content:flex-start}.cloud-controls input{flex:1;min-width:160px}}
+.cloud-controls input[type="password"]{min-width:205px}@media(max-width:720px){.cloud-controls input[type="password"]{min-width:160px}}
