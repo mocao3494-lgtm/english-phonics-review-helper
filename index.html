@@ -192,6 +192,7 @@
   <script src="./learned-vocabulary.js?v=20261112-1"></script>
   
 <script src="./app-20261115-37.js?v=20261115-43"></script>
-</body>
+<script id="quickCourseInline">
+(()=>{const input=document.getElementById('importPlan'),button=document.getElementById('quickImportPlan');if(!input||!button)return;button.onclick=()=>input.click();input.accept='application/json,.json,text/plain,.txt';input.onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const text=String(reader.result||'').trim();let plans;if(text.startsWith('[')||text.startsWith('{')){const raw=JSON.parse(text);plans=Array.isArray(raw)?raw:raw.days;}else{plans=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map(line=>{const a=line.split(/[|｜]/);if(a.length<2)throw Error('TXT 每行需写：日期 | 单词1, 单词2');const date=a.shift().trim(),words=a.join('|').split(/[，,、]/).map(x=>x.trim()).filter(Boolean).map(word=>({word}));return {date,words,focus:'请按课程内容学习'};});}const seen=new Set();if(!Array.isArray(plans)||!plans.length||plans.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')||!Array.isArray(x.words)||!x.words.length||seen.has(x.date)||(seen.add(x.date),false)))throw Error('日期不能重复，且每一天至少有一个单词');data.curriculumPlan=plans;save();fill();alert('已导入 '+plans.length+' 天课程计划。');}catch(err){alert('课程计划导入失败：'+(err.message||'格式不正确'));}finally{e.target.value='';}};reader.readAsText(file);};})();</script>\n</body>
 </html>
 
