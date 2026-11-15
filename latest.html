@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-build="20261115-19">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -9,6 +9,32 @@
   <title>英语拼读复习助手</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./upgrade.css?v=20261112-2" />
+  <link rel="stylesheet" href="./ui-20261115-19.css" />
+  <script>
+    (() => {
+      const BUILD='20261115-19';
+      const clearOldCache=async()=> {
+        if('serviceWorker' in navigator) {
+          const registrations=await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(item=>item.unregister()));
+        }
+        if('caches' in window) {
+          const names=await caches.keys();
+          await Promise.all(names.map(name=>caches.delete(name)));
+        }
+      };
+      clearOldCache().catch(()=>{});
+      fetch('./release.json?t='+Date.now(),{cache:'no-store'})
+        .then(response=>response.json())
+        .then(release=>{
+          if(release.build && release.build!==BUILD) {
+            const next=new URL('./index.html',location.href);
+            next.searchParams.set('build',release.build);
+            location.replace(next.href);
+          }
+        }).catch(()=>{});
+    })();
+  </script>
 </head>
 <body>
   <header>
@@ -150,8 +176,8 @@
   <footer>每日流程：新词预习 → 默写 → 勾选错词 → 保存并生成下一次复习。<button type="button" class="secondary compact" id="refreshApp">刷新到最新版本</button></footer>
   <script src="./master-plan.js?v=20261111-1"></script>
   <script src="./learned-vocabulary.js?v=20261112-1"></script>
-  <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=20261115-1',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));}</script>
-<script src="./app-20261115-18.js"></script>
+  
+<script src="./app-20261115-19.js"></script>
 </body>
 </html>
 
