@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-build="20261115-34">
+<html lang="zh-CN" data-build="20261115-35">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -9,10 +9,10 @@
   <title>英语拼读复习助手</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./upgrade.css?v=20261112-2" />
-  <link rel="stylesheet" href="./ui-20261115-34.css" />
+  <link rel="stylesheet" href="./ui-20261115-35.css" />
   <script>
     (() => {
-      const BUILD='20261115-34';
+      const BUILD='20261115-35';
       const clearOldCache=async()=> {
         if('serviceWorker' in navigator) {
           const registrations=await navigator.serviceWorker.getRegistrations();
@@ -69,6 +69,11 @@
         <p id="tomorrowFocus" class="today-focus"></p>
       </div>
       </div>
+      <section class="paste-card" id="pasteCard">
+        <div><h3>本次默写词 · 可直接复制</h3><p id="pasteWordCount" class="help"></p></div>
+        <button type="button" class="secondary" id="copyPasteWords">复制默写词</button>
+        <textarea id="pasteWordList" readonly spellcheck="false" aria-label="本次默写词，每行一个"></textarea>
+      </section>
       <div class="correction-box" id="correctionBox">
         <h3>② 批改默写：可补批改之前日期</h3>
         <p class="help">选择需要批改的日期；只勾选写错的词。保存后会重新生成之后尚未批改的复习清单。</p>
@@ -189,10 +194,10 @@
   </main>
   <div id="saveToast" class="save-toast" role="status" aria-live="polite"><span id="saveToastText"></span><button type="button" class="secondary compact" id="toastExport" hidden></button></div>
   <footer>每日流程：新词预习 → 默写 → 勾选错词 → 保存并生成下一次复习。<button type="button" class="secondary compact" id="refreshApp">刷新到最新版本</button></footer>
-  <script src="./master-plan-20261115-34.js"></script>
+  <script src="./master-plan-20261115-35.js"></script>
   <script src="./learned-vocabulary.js?v=20261112-1"></script>
   
-<script src="./app-20261115-34.js"></script>
+<script src="./app-20261115-35.js"></script>
 </body>
 </html>
 
