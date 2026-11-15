@@ -367,6 +367,14 @@ function nextPlan(){
   if(!completed)return {target,list:[],awaitingCorrection:true};
   return {target,list:planForDate(target)};
 }
+function invalidateUncorrectedFuturePlans(fromDate){
+  // 补录漏掉的日期后，尚未批改的未来预览必须作废并按新错词重新生成；
+  // 已保存的后续批改记录则保留，避免改写孩子已经完成的默写历史。
+  const completed=new Set(data.records.filter(r=>!r.seed).map(r=>r.date));
+  Object.keys(data.printedPlans||{}).forEach(date=>{
+    if(date>fromDate&&!completed.has(date))delete data.printedPlans[date];
+  });
+}
 function planForDate(date){
   const frozen=storedPlanFor(date);
   if(frozen)return frozen;
@@ -480,6 +488,9 @@ function render(){const {target,list}=currentPlan(),next=nextPlan(); const daily
   ['plan'].forEach(id=>$(id).classList.remove('hidden'));
   if(last||Object.values(data.tests||{}).some(x=>x!=='')){['analysis','khanPlan','checkPlan','weekend','history','progress','weekReport'].forEach(id=>$(id).classList.remove('hidden'));}
   $('nextDate').textContent='（'+next.target+'）';
+  const late=target<realToday();
+  $('lateCorrectionHint').textContent=late?`正在补录 ${dateLabel(target)}：保存后会按补录的错词重新生成 ${dateLabel(plus(target,1))} 起尚未批改的复习清单。`:'';
+  $('saveAndPlan').textContent=late?`③ 保存 ${target} 的错词，并生成 ${plus(target,1)} 复习`:'③ 保存错词并生成下一次复习';
   const words=next.list.length?next.list:[];
   const groups={newWords:0,errorWords:0,frequentErrors:0,learnedReview:0,other:0};words.forEach(x=>{const tag=x.tag||'';if(tag.includes('新词'))groups.newWords++;else if(tag.includes('错词'))groups.errorWords++;else if(tag.includes('高频'))groups.frequentErrors++;else if(tag.includes('已学'))groups.learnedReview++;else groups.other++;});
   $('planSummary').textContent=next.awaitingCorrection?'等待今天批改后生成':(words.length?`本次构成：新词 ${groups.newWords} 个｜错词复习 ${groups.errorWords} 个｜高频错词 ${groups.frequentErrors} 个｜已学复习 ${groups.learnedReview} 个`:'');
@@ -537,7 +548,7 @@ function saveRecord(){
   const reviewedWords=dictationItems.map(x=>norm(x.word));
   data.records=data.records.filter(r=>r.date!==date);
   const record={date,newWords,errors,nextNewWords,newItems,errorItems,nextNewItems,dictationItems:cloneItems(dictationItems),reviewedWords:reviewedWords.length?reviewedWords:newWords,khan:$('khanDone').value,masterFocus:master?.focus||''};
-  data.records.push(record);data.records.sort((a,b)=>a.date.localeCompare(b.date));rebuildWordState();
+  data.records.push(record);data.records.sort((a,b)=>a.date.localeCompare(b.date));invalidateUncorrectedFuturePlans(date);rebuildWordState();
   // 保存下一次清单；明天录入批改结果后，系统就知道哪些词实际参与过默写。
   record.nextPlan=buildPlan(plus(date,1)).list;
   clearDraft();save();render();const next=nextPlan(),health=planHealth(next.target,next.list);if(!health.ok){alert(`已保存今天的错词，但下一次清单校验未通过：缺少 ${health.missing.join('、')||'固定新词'}。请不要使用该清单。`);return;}const backupDue=!data.lastBackupAt||Date.now()-new Date(data.lastBackupAt).getTime()>7*86400000;showActionToast(`已保存 ${date}：错词 ${errors.length} 个；已生成 ${next.target} 的 ${next.list.length} 个待默写单词。${backupDue?' 建议现在备份一次。':''}`,backupDue?'导出备份':'',backupDue?()=>$('exportData').click():undefined);document.getElementById('plan').scrollIntoView({behavior:'smooth'});
@@ -640,6 +651,7 @@ $('studyDate').onchange=()=>{
   if(reviewMode){$('studyDate').value=queryDate;return;}
   selectedDate=$('studyDate').value||realToday();fill();
 };
+$('returnToday').onclick=()=>{if(reviewMode)return;selectedDate=realToday();fill();};
 $('errorWords').onchange=()=>{saveDraft();renderCorrectionPicker();};$('khanDone').onchange=saveDraft;
 $('addCustomWords').onclick=addCustomWords;
 $('childName').onchange=()=>{data.profile={...(data.profile||{}),childName:$('childName').value.trim()};save();};$('ruleExceptions').onchange=()=>{data.ruleExceptions=parseLines($('ruleExceptions').value);save();render();};document.addEventListener('click',e=>{const button=e.target.closest('[data-speak]');if(button)speakWord(button.dataset.speak);});
@@ -650,6 +662,7 @@ $('exportData').onclick=()=>{data.lastBackupAt=new Date().toISOString();save();c
 $('importPlan').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(reader.result),plans=Array.isArray(raw)?raw:raw.days,dates=new Set();if(!Array.isArray(plans)||!plans.length||plans.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')||!Array.isArray(x.words)||!x.words.length||dates.has(x.date)||(dates.add(x.date),false)))throw new Error('日期不能重复，且每一天必有至少一个单词');data.curriculumPlan=plans;save();fill();alert(`已导入 ${plans.length} 天课程计划。`);}catch(err){alert(`课程计划导入失败：${err.message||'格式不正确'}。`);}finally{e.target.value='';}};reader.readAsText(file)};
 $('importData').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const imported=normalizeBackup(JSON.parse(r.result));data=imported;save();selectedDate=realToday();fill();alert(`导入成：已恢复 ${data.records.length} 天学记录。`);}catch(err){alert(`导入失败${err.message||'备份文件格式不正确'}。原有数据未修改。`);}finally{e.target.value='';}};r.readAsText(f)};
 $('resetData').onclick=()=>{if(confirm('确定清空本手机的全部记录吗？此操作不能恢复；如有需要请先导出备份。')){data={records:[],tests:{},customWords:[],printedPlans:{},wordState:{},historicalSeedVersion:'2026-11-11-real-sheet-v5',correctionSyncVersion:CORRECTION_SYNC_VERSION};save();selectedDate=realToday();fill();alert('本机学习记录已清空。');}};
+$('refreshApp').onclick=()=>{const url=new URL(location.href);url.searchParams.set('v','20261115-16');url.searchParams.set('fresh',String(Date.now()));location.replace(url.toString());};
 let advancedShown=false;let simpleMode=localStorage.getItem('phonics-simple-mode')!=='0';document.body.classList.toggle('simple-mode',simpleMode);$('simpleMode').textContent=simpleMode?'退出今日简洁模式':'切换为今日简洁模式';$('simpleMode').onclick=()=>{simpleMode=!simpleMode;localStorage.setItem('phonics-simple-mode',simpleMode?'1':'0');document.body.classList.toggle('simple-mode',simpleMode);$('simpleMode').textContent=simpleMode?'退出今日简洁模式':'切换为今日简洁模式';};
 $('toggleAdvanced').onclick=()=>{advancedShown=!advancedShown;document.querySelectorAll('.advanced-card').forEach(x=>x.classList.toggle('shown',advancedShown));$('toggleAdvanced').textContent=advancedShown?'收起更多功能':'显示更多功能（规则卡、可汗记录、备份）';};
 try{fill();}catch(err){
