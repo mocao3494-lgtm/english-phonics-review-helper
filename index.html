@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-build="20261115-29">
+<html lang="zh-CN" data-build="20261115-31">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -9,10 +9,10 @@
   <title>英语拼读复习助手</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./upgrade.css?v=20261112-2" />
-  <link rel="stylesheet" href="./ui-20261115-29.css" />
+  <link rel="stylesheet" href="./ui-20261115-31.css" />
   <script>
     (() => {
-      const BUILD='20261115-29';
+      const BUILD='20261115-31';
       const clearOldCache=async()=> {
         if('serviceWorker' in navigator) {
           const registrations=await navigator.serviceWorker.getRegistrations();
@@ -38,6 +38,7 @@
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
 </head>
 <body>
   <header>
@@ -56,6 +57,12 @@
         <h2 id="todayWordDate">正在载入…</h2>
         <div id="todayWordChips" class="word-chips"></div>
         <p id="todayFocus" class="today-focus"></p>
+      </div>
+      <div class="today-words tomorrow-words" id="tomorrowWordsPanel">
+        <p class="eyebrow">明天准备学习</p>
+        <h2 id="tomorrowWordDate">正在载入…</h2>
+        <div id="tomorrowWordChips" class="word-chips"></div>
+        <p id="tomorrowFocus" class="today-focus"></p>
       </div>
       <div class="correction-box" id="correctionBox">
         <h3>② 批改默写：可补批改之前日期</h3>
@@ -177,10 +184,10 @@
   </main>
   <div id="saveToast" class="save-toast" role="status" aria-live="polite"><span id="saveToastText"></span><button type="button" class="secondary compact" id="toastExport" hidden></button></div>
   <footer>每日流程：新词预习 → 默写 → 勾选错词 → 保存并生成下一次复习。<button type="button" class="secondary compact" id="refreshApp">刷新到最新版本</button></footer>
-  <script src="./master-plan.js?v=20261111-1"></script>
+  <script src="./master-plan-20261115-31.js"></script>
   <script src="./learned-vocabulary.js?v=20261112-1"></script>
   
-<script src="./app-20261115-29.js"></script>
+<script src="./app-20261115-31.js"></script>
 </body>
 </html>
 
