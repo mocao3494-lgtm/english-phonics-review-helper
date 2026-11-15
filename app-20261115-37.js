@@ -79,7 +79,7 @@ function renderFutureLearningPlans(date){
   }
   container.innerHTML=plans.length?plans.map((plan,index)=>{
     const chips=plan.words.map((x,i)=>'<span class="word-chip"><b>'+(i+1)+'.</b> '+highlightEnglish(x.word)+'</span>').join('');
-    return '<details class="future-plan-item" '+(index<2?'open':'')+'><summary><span><b>'+(index===0?'下一次':'第'+(index+1)+'次')+'学习</b> · '+dateLabel(plan.date)+'</span><span class="future-plan-count">'+plan.words.length+' 个词</span></summary><div class="word-chips">'+chips+'</div><p class="today-focus">重点：'+escapeHtml(plan.focus||'按词块读、说、写。')+'</p></details>';
+    return '<details class="future-plan-item"><summary><span><b>'+(index===0?'下一次':'第'+(index+1)+'次')+'学习</b> · '+dateLabel(plan.date)+'</span><span class="future-plan-count">'+plan.words.length+' 个词</span></summary><div class="word-chips">'+chips+'</div><p class="today-focus">重点：'+escapeHtml(plan.focus||'按词块读、说、写。')+'</p></details>';
   }).join(''):'<p class="help">课程后续新词尚未录入。</p>';
 }
 function renderTodayWords(){
