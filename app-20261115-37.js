@@ -683,17 +683,27 @@ function renderPendingCorrections(){
   const first=pending.at(-1);$('pendingCorrectionText').textContent=`有 ${pending.length} 天待补批改，最早是 ${dateLabel(first)}。补批改后会自动更新后续未批改清单。`;
   $('openPendingCorrection').onclick=()=>{selectedDate=first;fill();setTimeout(()=>$('correctionBox').scrollIntoView({behavior:'smooth',block:'start'}),0);};
 }
+function pasteWords(list){
+  return [...new Set((list||[]).map(item=>norm(typeof item==='string'?item:item.word)).filter(Boolean))];
+}
 function renderPasteList(){
   const box=$('pasteWordList');if(!box)return;
-  const {target,list}=currentPlan(),words=[...new Set((list||[]).map(item=>norm(typeof item==='string'?item:item.word)).filter(Boolean))];
-  box.value=words.join('\n');$('pasteWordCount').textContent=`${dateLabel(target)} · 共 ${words.length} 个词（每行一个，可直接粘贴）`;
+  const {target,list}=currentPlan(),words=pasteWords(list);
+  box.value=words.join('\n');$('pasteWordCount').textContent=`${dateLabel(target)} · 共 ${words.length} 个词（每行一个，可直接粘贴；与下方本次批改单完全一致）`;
+  const nextBox=$('nextPasteWordList');if(!nextBox)return;
+  const next=nextPlan(),nextWords=next.awaitingCorrection?[]:pasteWords(next.list);
+  nextBox.value=nextWords.join('\n');
+  $('nextPasteWordCount').textContent=next.awaitingCorrection?'请先保存当天的批改结果；系统会依据错词和记忆曲线生成下一次清单。':`${dateLabel(next.target)} · 共 ${nextWords.length} 个词（每行一个，可直接粘贴）`;
+  $('nextPasteBadge').textContent=next.awaitingCorrection?'待当天批改':'已生成';
 }
-async function copyPasteWords(){
-  const box=$('pasteWordList'),text=box?.value||'';
-  if(!text){alert('当前没有可复制的默写词。');return;}
-  try{await navigator.clipboard.writeText(text);showSaveToast('已复制默写词，可直接粘贴到其他软件。');}
-  catch{box.focus();box.select();document.execCommand('copy');showSaveToast('已复制默写词，可直接粘贴到其他软件。');}
+async function copyTextFrom(boxId,emptyMessage,successMessage){
+  const box=$(boxId),text=box?.value||'';
+  if(!text){alert(emptyMessage);return;}
+  try{await navigator.clipboard.writeText(text);showSaveToast(successMessage);}
+  catch{box.focus();box.select();document.execCommand('copy');showSaveToast(successMessage);}
 }
+async function copyPasteWords(){return copyTextFrom('pasteWordList','当前没有可复制的默写词。','已复制本次默写词，可直接粘贴到其他软件。');}
+async function copyNextPasteWords(){return copyTextFrom('nextPasteWordList','请先保存当天批改结果，再复制下一次待默写词。','已复制下一次待默写词，可直接粘贴到其他软件。');}
 function render(){const {target,list}=currentPlan(),next=nextPlan(); const dailyRecord=currentDailyRecord(target,list); const last=data.records.at(-1); const ws=weakness(); const targetFocus=masterPlanFor(target)?.focus||''; const rec=khanRecommendation(ws,targetFocus);
   renderCorrectionPicker();renderCorrectionQr();renderPendingCorrections();renderPasteList();
   ['plan'].forEach(id=>$(id).classList.remove('hidden'));
@@ -888,7 +898,7 @@ $('returnToday').onclick=()=>{if(reviewMode)return;selectedDate=realToday();fill
 $('errorWords').onchange=()=>{saveDraft();renderCorrectionPicker();};$('khanDone').onchange=saveDraft;
 $('addCustomWords').onclick=addCustomWords;
 $('childName').onchange=()=>{data.profile={...(data.profile||{}),childName:$('childName').value.trim()};save();};$('ruleExceptions').onchange=()=>{data.ruleExceptions=parseLines($('ruleExceptions').value);save();render();};document.addEventListener('click',e=>{const button=e.target.closest('[data-speak]');if(button)speakWord(button.dataset.speak);});
-$('copyPasteWords').onclick=copyPasteWords;
+$('copyPasteWords').onclick=copyPasteWords;$('copyNextPasteWords').onclick=copyNextPasteWords;
 $('selectAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=true);syncCheckedErrors();};
 $('clearAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=false);syncCheckedErrors();};
 $('exportWeeklyReport').onclick=()=>{const weekly=weeklyReport();downloadDoc(`英语拼读周报_${iso(new Date())}.doc`,worksheetHtml('英语读周报',weekly.html));};
