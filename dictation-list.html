@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-build="20261115-37">
+<html lang="zh-CN" data-build="20261115-38">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -49,6 +49,12 @@
         <button type="button" class="secondary" id="copyPasteWords">复制默写词</button>
         <textarea id="pasteWordList" readonly spellcheck="false" aria-label="本次默写词，每行一个"></textarea>
       </section>
+      <details class="next-paste-card" id="nextPasteCard">
+        <summary><span>下一次待默写词 · 保存当天批改后自动生成</span><span id="nextPasteBadge"></span></summary>
+        <p id="nextPasteWordCount" class="help"></p>
+        <div class="actions"><button type="button" class="secondary" id="copyNextPasteWords">复制下一次待默写词</button></div>
+        <textarea id="nextPasteWordList" readonly spellcheck="false" aria-label="下一次待默写词，每行一个"></textarea>
+      </details>
       <div class="correction-box" id="correctionBox">
         <h3>② 批改默写：可补批改之前日期</h3>
         <p class="help">选择需要批改的日期；只勾选写错的词。保存后会重新生成之后尚未批改的复习清单。</p>
