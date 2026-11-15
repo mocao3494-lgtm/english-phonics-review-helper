@@ -29,8 +29,13 @@
         <p id="todayFocus" class="today-focus"></p>
       </div>
       <div class="correction-box" id="correctionBox">
-        <h3>② 批改今天默写：只勾选写错的词</h3>
-        <p class="help">日期：<b id="correctionDate"></b>。没有错误就不勾选；保存后才会生成下一次正式清单。</p>
+        <h3>② 批改默写：可补批改之前日期</h3>
+        <p class="help">选择需要批改的日期；只勾选写错的词。保存后会重新生成之后尚未批改的复习清单。</p>
+        <div class="correction-controls">
+          <label>默写日期 <select id="correctionDatePicker"></select></label>
+          <label>排列方式 <select id="correctionSort"><option value="original">本次默写顺序</option><option value="errors">错误次数从多到少</option><option value="recent">最近加入错题优先</option></select></label>
+        </div>
+        <p class="help">当前批改：<b id="correctionDate"></b>。没有错误就不勾选。</p>
         <div id="correctionWords" class="correction-words"></div>
         <div class="actions"><button type="button" class="secondary" id="selectAllErrors">全部勾选</button><button type="button" class="secondary" id="clearAllErrors">全部取消</button></div>
       </div>
@@ -146,7 +151,7 @@
   <script src="./master-plan.js?v=20261111-1"></script>
   <script src="./learned-vocabulary.js?v=20261112-1"></script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=20261115-1',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));}</script>
-<script src="./app.js?v=20261115-16"></script>
+<script src="./app.js?v=20261115-17"></script>
 </body>
 </html>
 
