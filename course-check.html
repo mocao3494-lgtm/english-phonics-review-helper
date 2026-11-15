@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-build="20261115-41">
+<html lang="zh-CN" data-build="20261115-43">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -9,7 +9,7 @@
   <title>英语拼读复习助手</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./upgrade.css?v=20261112-2" />
-  <link rel="stylesheet" href="./ui-20261115-37.css?v=20261115-41" />
+  <link rel="stylesheet" href="./ui-20261115-37.css?v=20261115-43" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
@@ -23,6 +23,12 @@
   </header>
   <main><button type="button" class="secondary compact" id="simpleMode">切换为今日简洁模式</button>
     <section class="notice" id="dataNotice">数据只保存在本手机/浏览器；如需换设备，请在更多功能中导出并导入备份。</section>
+
+    <section class="quick-course" id="quickCourse">
+      <div><b>➕ 后续课程单词</b><p>新增课程后，点击上传即可加入后续学习安排；不会影响已经批改的历史记录。</p></div>
+      <div class="actions"><button type="button" class="secondary" id="quickImportPlan">上传课程计划</button></div>
+      <details><summary>文件怎么写？</summary><p>最简单：新建一个 TXT 文件，每行写一天，例如：<br><code>2026-11-26 | apple, pear, banana, orange, grape</code><br>也支持原来的 JSON 课程计划文件。</p></details>
+    </section>
 
     <section class="pending-correction" id="pendingCorrection" hidden><span id="pendingCorrectionText"></span><button type="button" class="secondary compact" id="openPendingCorrection">去补批改</button></section>
 
@@ -172,8 +178,8 @@
       <details><summary>怎么区分会写单词和会拼规则</summary><p>会写旧词只说明孩记住了这个词；只有“能说出组读音、能读写没背过但规律相同词、能区分 hop/hope 这类对比词”才算真正掌握规则。本页面的“本周规则检验”专门记录这三件事。</p></details>
       <label>孩子昵称 <small>用于区分备份文件，不填写也可以。</small><input id="childName" type="text" maxlength="30" placeholder="例如：小" /></label>
       <label>规则例外词 <small>每行一个；这些词将按“视觉写”处理，不再套用自动拼读规。</small><textarea id="ruleExceptions" rows="3" placeholder="例如：one&#10;said"></textarea></label>
-      <label class="upload">导入下一阶段课程计划<input id="importPlan" type="file" accept="application/json" /></label><p class="help">课程计划 JSON 为日期数组，每项包含 date、wordsfocus；导入后将优先覆盖同日期固定计划。</p>
-      <div class="actions"><button class="secondary" id="exportData">导出备份</button><label class="upload">入备份<input id="importData" type="file" accept="application/json" /></label><button class="danger" id="resetData">清空全部数</button></div>
+      <label class="upload">导入下一阶段课程计划<input id="importPlan" type="file" accept="application/json,.json,text/plain,.txt" /></label><p class="help">课程计划 JSON 为日期数组，每项包含 date、wordsfocus；导入后将优先覆盖同日期固定计划。</p>
+      <div class="actions"><button class="secondary" id="exportData">导出备份</button><label class="upload">入备份<input id="importData" type="file" accept="application/json,.json,text/plain,.txt" /></label><button class="danger" id="resetData">清空全部数</button></div>
     </section>
   </main>
   <div id="saveToast" class="save-toast" role="status" aria-live="polite"><span id="saveToastText"></span><button type="button" class="secondary compact" id="toastExport" hidden></button></div>
@@ -181,7 +187,7 @@
   <script src="./master-plan-20261115-35.js"></script>
   <script src="./learned-vocabulary.js?v=20261112-1"></script>
   
-<script src="./app-20261115-37.js?v=20261115-41"></script>
+<script src="./app-20261115-37.js?v=20261115-43"></script>
 </body>
 </html>
 
