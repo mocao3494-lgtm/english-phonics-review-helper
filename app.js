@@ -23,6 +23,7 @@ if(data.historicalErrorDataVersion!==HISTORICAL_ERROR_DATA_VERSION){
 }
 const allMasterPlans=()=>[...(data.curriculumPlan||[]),...(window.MASTER_DAILY_PLAN||[])];
 const masterPlanFor=date=>allMasterPlans().find(x=>x.date===date);
+const nextLearningPlanFor=date=>allMasterPlans().filter(x=>x.date>=date&&(x.words||[]).length).sort((a,b)=>a.date.localeCompare(b.date))[0]||null;
 // 从 0 级、1 级和当前已学的 2 级教材整理出的长期复习池。它不等同于错题本：
 // 所有已学词都会轮换出现，实际默写结果再决定之后的间隔与优先级。
 const learnedVocabulary=()=>Array.isArray(window.LEARNED_VOCABULARY)?window.LEARNED_VOCABULARY:[];
@@ -62,28 +63,27 @@ function planRuleIds(focus=''){
   return [...new Set(pairs.filter(([key])=>focus.includes(key)).map(([,id])=>id))];
 }
 function updateMasterPlanHint(){
-  const date=$('studyDate').value||realToday(), plan=masterPlanFor(date), next=masterPlanFor(plus(date,1));
+  const date=$('studyDate').value||realToday(), plan=masterPlanFor(date), next=nextLearningPlanFor(plus(date,1));
   $('masterPlanHint').innerHTML=plan
     ? `<b>今天固定新词：</b>${plan.words.map(x=>`<b>${escapeHtml(x.word)}</b>`).join('、')}。<br><b>明天预告：</b>${next?next.words.map(x=>`<b>${escapeHtml(x.word)}</b>`).join('、'):'明天是复习日'}。<br>今天重点：${escapeHtml(plan.focus)}。您只需在下方填写今天的错词。`
-    : '今天是复习日：无需输入新词，只填写今天默写错误的词。';
+    : `今天是复习日：无需输入新词，只填写今天默写错误的词。${next?`下一次新词为 ${next.date}。`:''}`;
 }
 function renderTodayWords(){
-  const date=$('studyDate').value||realToday(), plan=masterPlanFor(date);
-  $('todayWordDate').textContent=`${dateLabel(date)}｜5 个新词`;
+  const date=$('studyDate').value||realToday(), plan=masterPlanFor(date), next=nextLearningPlanFor(date);
+  $('todayWordDate').textContent=`${dateLabel(date)}｜${plan?.words?.length?'今天的 5 个新词':'下一次学习的 5 个新词'}`;
   if(plan?.words?.length){
     $('todayWordChips').innerHTML=plan.words.map((x,i)=>`<span class="word-chip"><b>${i+1}.</b> ${highlightEnglish(x.word)}</span>`).join('');
     $('todayFocus').textContent=`今天重点：${plan.focus||'按词块读、说、写。'}`;
   }else{
-    $('todayWordDate').textContent=`${dateLabel(date)}｜复习日`;
-    $('todayWordChips').innerHTML='<span class="word-chip">今天没有固定新词</span>';
-    $('todayFocus').textContent='今天只完成默写批改和复习即可。';
+    $('todayWordChips').innerHTML=next?.words?.map((x,i)=>`<span class="word-chip"><b>${i+1}.</b> ${highlightEnglish(x.word)}</span>`).join('')||'<span class="word-chip">课程表中暂无下一组新词</span>';
+    $('todayFocus').textContent=next?`复习日：下一次新词日期为 ${dateLabel(next.date)}；今天先完成默写批改和复习。`:'今天只完成默写批改和复习即可。';
   }
 }
 function fillMasterPlan(){
   const date=$('studyDate').value||realToday(), plan=masterPlanFor(date);
   if(!plan){$('newWords').value='今天是复习日（没有固定新词）';$('nextNewWords').value='';updateMasterPlanHint();renderTodayWords();return;}
   $('newWords').value=formatItems(plan.words);
-  const next=masterPlanFor(plus(date,1));
+  const next=nextLearningPlanFor(plus(date,1));
   $('nextNewWords').value=next?formatItems(next.words):'';
   updateMasterPlanHint();
   renderTodayWords();
@@ -355,6 +355,8 @@ function storedPlanFor(date){
 function currentPlan(){
   const target=reviewMode&&queryDate?queryDate:(selectedDate||realToday());
   if(reviewMode&&queryItems.length)return {target,list:cloneItems(queryItems)};
+  const actual=dictationItemsFor(target);
+  if(actual.length)return {target,list:actual};
   const frozen=storedPlanFor(target);
   return {target,list:frozen||buildPlan(target).list};
 }
@@ -558,6 +560,23 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function highlightEnglish(word){return escapeHtml(word).replace(/[aeiou]/gi,letter=>`<em class="vowel-mark">${letter}</em>`);}
 function highlightIpa(ipa){return escapeHtml(ipa).replace(/[iɪeɛæɑɒɔʊuʌəɜɐɚ]/g,letter=>`<em class="vowel-mark">${letter}</em>`);}
 function correctionWords(){return [...document.querySelectorAll('#correctionWords input:checked')].map(x=>norm(x.value));}
+function correctionDates(){
+  const dates=allMasterPlans().map(x=>x.date).filter(Boolean).concat(data.records.map(x=>x.date),Object.keys(HISTORICAL_DICTATION_ITEMS||{}));
+  const first=dates.sort()[0]||realToday(),result=[];
+  for(let day=first;day<=realToday();day=plus(day,1))result.push(day);
+  return [...new Set([...result,selectedDate||realToday()])].sort((a,b)=>b.localeCompare(a));
+}
+function latestErrorDate(word){
+  const target=norm(word),recordDate=data.records.filter(r=>(r.errors||[]).some(w=>norm(w)===target)).map(r=>r.date).sort().at(-1)||'';
+  const historical=historicalErrors()[target]?.lastDate||'';
+  return recordDate>historical?recordDate:historical;
+}
+function sortCorrectionItems(items){
+  const mode=$('correctionSort')?.value||'original',counts=allErrorCounts();
+  if(mode==='errors')return [...items].sort((a,b)=>(counts[norm(b.word)]||0)-(counts[norm(a.word)]||0)||String(a.word).localeCompare(String(b.word)));
+  if(mode==='recent')return [...items].sort((a,b)=>latestErrorDate(b.word).localeCompare(latestErrorDate(a.word))||(counts[norm(b.word)]||0)-(counts[norm(a.word)]||0));
+  return items;
+}
 function syncCheckedErrors(){
   const checked=correctionWords();
   const {list}=currentPlan();
@@ -565,13 +584,16 @@ function syncCheckedErrors(){
   $('errorWords').value=[...checked,...extras.map(x=>x.word)].join('\n');saveDraft();
 }
 function renderCorrectionPicker(){
-  // 批改、打印和当天总表始终读取同一份当天清单。
+  // 可选择过去任意一天补批改；日期由同一份默写清单驱动。
   const {target:date,list:planned}=currentPlan(), master=masterPlanFor(date);
   $('studyDate').value=date;
-  const list=planned.length?planned:(master?.words||[]).map(x=>({...x,tag:'今天新词'}));
+  const picker=$('correctionDatePicker');
+  picker.innerHTML=correctionDates().map(day=>`<option value="${day}">${dateLabel(day)}${data.records.some(r=>r.date===day&&!r.seed)?'（已批改，可修改）':'（可补批改）'}</option>`).join('');
+  picker.value=date;
+  const list=sortCorrectionItems(planned.length?planned:(master?.words||[]).map(x=>({...x,tag:'当天新词'})));
   const selected=new Set(parseEntries($('errorWords').value).map(x=>x.word));
   $('correctionDate').textContent=date;
-  const metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{const detail=itemFor(x.word,metas);return `<label class="correction-choice"><input type="checkbox" value="${escapeHtml(x.word)}" ${selected.has(norm(x.word))?'checked':''}><span>${i+1}. <b>${highlightEnglish(x.word)}</b> <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><small>${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small>${escapeHtml(x.tag||'')}</small></span></label>`}).join(''):'<p>暂时没有可勾选的词。请在“补充功能”中确认日期后重新载入。</p>';
+  const counts=allErrorCounts(),metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{const detail=itemFor(x.word,metas),count=counts[norm(x.word)]||0,last=latestErrorDate(x.word);return `<label class="correction-choice"><input type="checkbox" value="${escapeHtml(x.word)}" ${selected.has(norm(x.word))?'checked':''}><span>${i+1}. <b>${highlightEnglish(x.word)}</b> <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><small>${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small>${escapeHtml(x.tag||'')}｜历史错误 ${count} 次${last?`｜最近 ${last}`:''}</small></span></label>`}).join(''):'<p>这一天暂时没有可供批改的默写词。</p>';
   document.querySelectorAll('#correctionWords input').forEach(input=>input.onchange=syncCheckedErrors);
 }
 function renderCorrectionQr(){
@@ -651,6 +673,8 @@ $('studyDate').onchange=()=>{
   if(reviewMode){$('studyDate').value=queryDate;return;}
   selectedDate=$('studyDate').value||realToday();fill();
 };
+$('correctionDatePicker').onchange=()=>{if(reviewMode){$('correctionDatePicker').value=queryDate;return;}selectedDate=$('correctionDatePicker').value||realToday();fill();};
+$('correctionSort').onchange=()=>renderCorrectionPicker();
 $('returnToday').onclick=()=>{if(reviewMode)return;selectedDate=realToday();fill();};
 $('errorWords').onchange=()=>{saveDraft();renderCorrectionPicker();};$('khanDone').onchange=saveDraft;
 $('addCustomWords').onclick=addCustomWords;
