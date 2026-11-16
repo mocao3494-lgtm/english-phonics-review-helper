@@ -68,17 +68,34 @@ function updateMasterPlanHint(){
     ? `<b>今天固定新词：</b>${plan.words.map(x=>`<b>${escapeHtml(x.word)}</b>`).join('、')}。<br><b>明天预告：</b>${next?next.words.map(x=>`<b>${escapeHtml(x.word)}</b>`).join('、'):'明天是复习日'}。<br>今天重点：${escapeHtml(plan.focus)}。您只需在下方填写今天的错词。`
     : `今天是复习日：无需输入新词，只填写今天默写错误的词。${next?`下一次新词为 ${next.date}。`:''}`;
 }
-function renderTodayWords(){
-  const date=$('studyDate').value||realToday(), plan=masterPlanFor(date), next=nextLearningPlanFor(date);
-  $('todayWordDate').textContent=`${dateLabel(date)}｜${plan?.words?.length?'今天的 5 个新词':'下一次学习的 5 个新词'}`;
-  if(plan?.words?.length){
-    $('todayWordChips').innerHTML=plan.words.map((x,i)=>`<span class="word-chip"><b>${i+1}.</b> ${highlightEnglish(x.word)}</span>`).join('');
-    $('todayFocus').textContent=`今天重点：${plan.focus||'按词块读、说、写。'}`;
-  }else{
-    $('todayWordChips').innerHTML=next?.words?.map((x,i)=>`<span class="word-chip"><b>${i+1}.</b> ${highlightEnglish(x.word)}</span>`).join('')||'<span class="word-chip">课程表中暂无下一组新词</span>';
-    $('todayFocus').textContent=next?`复习日：下一次新词日期为 ${dateLabel(next.date)}；今天先完成默写批改和复习。`:'今天只完成默写批改和复习即可。';
+function renderFutureLearningPlans(date){
+  const container=$('futurePlanList');
+  if(!container)return;
+  const plans=[],seen=new Set();let cursor=date,guard=0;
+  while(plans.length<7&&guard++<120){
+    const plan=masterPlanFor(cursor);
+    if(plan?.words?.length&&!seen.has(plan.date)){plans.push(plan);seen.add(plan.date);}
+    cursor=plus(cursor,1);
   }
+  container.innerHTML=plans.length?plans.map((plan,index)=>{
+    const chips=plan.words.map((x,i)=>'<span class="word-chip"><b>'+(i+1)+'.</b> '+highlightEnglish(x.word)+'</span>').join('');
+    return '<div class="future-plan-row"><span class="future-plan-date">'+dateLabel(plan.date)+'</span><span class="future-plan-words">'+plan.words.map(x=>escapeHtml(x.word)).join(' · ')+'</span></div>';
+  }).join(''):'<p class="help">课程后续新词尚未录入。</p>';
 }
+function renderTodayWords(){
+  const date=$('studyDate').value||realToday(), plan=masterPlanFor(date), tomorrow=masterPlanFor(plus(date,1))||nextLearningPlanFor(plus(date,1));
+  const todayDate=$('todayWordDate'),todayChips=$('todayWordChips'),todayFocus=$('todayFocus'),tomorrowDate=$('tomorrowWordDate'),tomorrowChips=$('tomorrowWordChips'),tomorrowFocus=$('tomorrowFocus');
+  if(todayDate&&todayChips&&todayFocus&&tomorrowDate&&tomorrowChips&&tomorrowFocus){
+    todayDate.textContent=dateLabel(date)+'｜今天学习的 5 个新词';
+    todayChips.innerHTML=plan?.words?.length?plan.words.map((x,i)=>'<span class="word-chip"><b>'+(i+1)+'.</b> '+highlightEnglish(x.word)+'</span>').join(''):'<span class="word-chip">今天为复习日：没有固定新词</span>';
+    todayFocus.textContent=plan?.words?.length?'今天重点：'+(plan.focus||'按词块读、说、写。'):'今天先完成默写批改和复习即可。';
+    tomorrowDate.textContent=dateLabel(plus(date,1))+'｜明天准备学习的 5 个新词';
+    tomorrowChips.innerHTML=tomorrow?.words?.length?tomorrow.words.map((x,i)=>'<span class="word-chip"><b>'+(i+1)+'.</b> '+highlightEnglish(x.word)+'</span>').join(''):'<span class="word-chip">明天为复习日：没有固定新词</span>';
+    tomorrowFocus.textContent=tomorrow?.words?.length?'明天重点：'+(tomorrow.focus||'按词块读、说、写。'):'';
+  }
+  renderFutureLearningPlans(date);
+}
+
 function fillMasterPlan(){
   const date=$('studyDate').value||realToday(), plan=masterPlanFor(date);
   if(!plan){$('newWords').value='今天是复习日（没有固定新词）';$('nextNewWords').value='';updateMasterPlanHint();renderTodayWords();return;}
@@ -136,7 +153,134 @@ const RULE_DETAILS={
 };
 const WEEK=['星期','星期一','星期二','星期三','星四','星期五','星期六'];
 
-function save(){localStorage.setItem(KEY,JSON.stringify(data));}
+const CLOUD_SYNC={url:'https://hafdtxwbnzoezxsqyaqn.supabase.co',key:'sb_publishable_7aDPR81-sJG4-SKtqj888w_C1N2TnYB',table:'learning_sync',sessionKey:'phonics-cloud-session-v1'};
+let cloudSession=null,cloudReady=false,cloudRecoveryMode=false;
+function syncTimeText(value){if(!value)return '尚未同步';const date=new Date(value);return Number.isNaN(date.getTime())?'尚未同步':date.toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+function updateSyncNotice(){const notice=$('dataNotice');if(!notice)return;if(cloudSession&&cloudUserId()){notice.textContent=`☁ 云端同步已开启：每次保存会自动上传。最近同步：${syncTimeText(data.cloudLastSyncAt||data.cloudUpdatedAt)}。`;notice.classList.add('cloud-notice');}else{notice.textContent='数据目前仅保存在本机浏览器；登录云端同步后，保存会自动上传。';notice.classList.remove('cloud-notice');}}
+function cloudStatus(text,tone=''){const el=$('cloudStatus');if(el){el.textContent=text;el.className='cloud-status '+tone;}updateSyncNotice();}
+function decodeJwt(token){try{return JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))));}catch{return null;}}
+function readCloudSession(){const hash=new URLSearchParams(location.hash.slice(1));cloudRecoveryMode=hash.get('type')==='recovery';const token=hash.get('access_token'),refresh=hash.get('refresh_token');if(token){const session={access_token:token,refresh_token:refresh||'',user:decodeJwt(token),savedAt:Date.now()};localStorage.setItem(CLOUD_SYNC.sessionKey,JSON.stringify(session));history.replaceState(null,'',location.pathname+location.search);return session;}try{return JSON.parse(localStorage.getItem(CLOUD_SYNC.sessionKey)||'null');}catch{return null;}}
+function cloudTokenExpired(){const exp=decodeJwt(cloudSession?.access_token||'')?.exp;return !!exp&&Date.now()>=((exp-30)*1000);}
+function expireCloudSession(){localStorage.removeItem(CLOUD_SYNC.sessionKey);cloudSession=null;renderCloudControls();cloudStatus('登录已过期，请重新用密码登录；本机学习记录不会丢失。','warn');}
+async function refreshCloudSession(){if(!cloudSession?.refresh_token)return false;try{const response=await fetch(CLOUD_SYNC.url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:CLOUD_SYNC.key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:cloudSession.refresh_token})});if(!response.ok){expireCloudSession();return false;}const payload=await response.json();cloudSession={access_token:payload.access_token,refresh_token:payload.refresh_token||cloudSession.refresh_token,user:decodeJwt(payload.access_token),savedAt:Date.now()};localStorage.setItem(CLOUD_SYNC.sessionKey,JSON.stringify(cloudSession));return true;}catch{return false;}}
+async function cloudRequest(path,options={},retried=false){if(!path.startsWith('/auth/v1/token')&&cloudSession&&cloudTokenExpired())await refreshCloudSession();const headers={apikey:CLOUD_SYNC.key,'Content-Type':'application/json',...(options.headers||{})};if(cloudSession?.access_token)headers.Authorization='Bearer '+cloudSession.access_token;const response=await fetch(CLOUD_SYNC.url+path,{...options,headers});const body=await response.text();if(!response.ok){if(!retried&&/JWT expired|invalid jwt|token.*expired/i.test(body)&&await refreshCloudSession())return cloudRequest(path,options,true);if(/JWT expired|invalid jwt|token.*expired/i.test(body))expireCloudSession();throw new Error(body.slice(0,180)||'云端服务暂不可用');}return body?JSON.parse(body):null;}
+function cloudUserId(){return cloudSession?.user?.sub||decodeJwt(cloudSession?.access_token||'')?.sub||'';}
+function mountCloudSync(){
+  const notice=document.querySelector('.notice');if(!notice||$('cloudSync'))return;
+  const box=document.createElement('section');box.className='cloud-sync';box.id='cloudSync';
+  box.innerHTML='<div><b>☁ 云端同步</b><span id="cloudStatus" class="cloud-status">未登录：手机和电脑使用同一邮箱即可同步。</span></div><div id="cloudControls" class="cloud-controls"></div>';
+  notice.insertAdjacentElement('afterend',box);
+  renderCloudControls();
+}
+function renderCloudControls(){
+  const controls=$('cloudControls');if(!controls)return;
+  if(cloudSession&&cloudUserId()){
+    if(cloudRecoveryMode){
+      controls.innerHTML='<input id="cloudNewPassword" type="password" autocomplete="new-password" placeholder="设置新密码（至少 8 位）" aria-label="新密码"><button type="button" class="secondary compact" id="cloudSavePassword">保存新密码</button>';
+      $('cloudSavePassword').onclick=cloudSaveNewPassword;return;
+    }
+    const email=cloudSession.user?.email||'已登录';
+    controls.innerHTML='<span class="cloud-email">已登录：'+escapeHtml(email)+'</span><button type="button" class="secondary compact" id="cloudPull">下载云端记录</button><button type="button" class="secondary compact" id="cloudPush">上传本机记录</button><button type="button" class="secondary compact" id="cloudBackup">选择备份上传</button><input id="cloudBackupFile" type="file" accept="application/json,.json" hidden><button type="button" class="secondary compact" id="cloudSignOut">退出</button>';
+    $('cloudPull').onclick=()=>cloudPull();$('cloudPush').onclick=()=>cloudPush();$('cloudBackup').onclick=()=>$('cloudBackupFile').click();$('cloudBackupFile').onchange=cloudUploadBackup;$('cloudSignOut').onclick=()=>{localStorage.removeItem(CLOUD_SYNC.sessionKey);cloudSession=null;renderCloudControls();cloudStatus('已退出；本机记录不会删除。');};
+  }else{
+    controls.innerHTML='<input id="cloudEmail" type="email" inputmode="email" autocomplete="email" placeholder="家长邮箱" aria-label="家长邮箱"><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="设置或输入密码（至少 8 位）" aria-label="云同步密码"><button type="button" class="secondary compact" id="cloudPasswordLogin">密码登录</button><button type="button" class="secondary compact" id="cloudSignUp">首次注册</button>';
+    $('cloudPasswordLogin').onclick=()=>cloudPasswordAuth('login');
+    $('cloudSignUp').onclick=()=>cloudPasswordAuth('signup');
+    const recover=document.createElement('button');recover.type='button';recover.className='secondary compact';recover.id='cloudRecover';recover.textContent='设置/找回密码';controls.appendChild(recover);recover.onclick=sendCloudRecovery;
+  }
+}
+async function sendCloudRecovery(){
+  const email=String($('cloudEmail')?.value||'').trim();
+  if(!/^\S+@\S+\.\S+$/.test(email)){cloudStatus('请填写正确的邮箱。','warn');return;}
+  try{
+    cloudStatus('正在发送设置密码邮件…');
+    await cloudRequest('/auth/v1/recover',{method:'POST',body:JSON.stringify({email,redirect_to:location.origin+location.pathname})});
+    cloudStatus('邮件已发送；请打开邮件链接并设置新密码。','ok');
+  }catch(err){cloudStatus(String(err.message||'').includes('over_email_send_rate_limit')?'邮件额度已用完，请约一小时后再试。':'发送失败：'+err.message,'warn');}
+}
+async function cloudSaveNewPassword(){
+  const password=String($('cloudNewPassword')?.value||'');
+  if(password.length<8){cloudStatus('密码至少需要 8 位。','warn');return;}
+  try{
+    await cloudRequest('/auth/v1/user',{method:'PUT',body:JSON.stringify({password})});
+    cloudRecoveryMode=false;renderCloudControls();cloudStatus('新密码已保存。首次请点击“上传本机记录”。','ok');
+  }catch(err){cloudStatus('保存新密码失败：'+err.message,'warn');}
+}
+async function cloudPasswordAuth(mode){
+  const email=String($('cloudEmail')?.value||'').trim(),password=String($('cloudPassword')?.value||'');
+  if(!/^\S+@\S+\.\S+$/.test(email)){cloudStatus('请填写正确的邮箱。','warn');return;}
+  if(password.length<8){cloudStatus('密码至少需要 8 位。','warn');return;}
+  try{
+    cloudStatus(mode==='signup'?'正在创建账号…':'正在登录…');
+    const path=mode==='signup'?'/auth/v1/signup':'/auth/v1/token?grant_type=password';
+    const body=mode==='signup'?{email,password,options:{emailRedirectTo:location.origin+location.pathname}}:{email,password};
+    const result=await cloudRequest(path,{method:'POST',body:JSON.stringify(body)});
+    if(result.access_token){
+      cloudSession={access_token:result.access_token,refresh_token:result.refresh_token||'',user:result.user||decodeJwt(result.access_token),savedAt:Date.now()};
+      localStorage.setItem(CLOUD_SYNC.sessionKey,JSON.stringify(cloudSession));
+      renderCloudControls();cloudStatus('登录成功。首次请点击“上传本机记录”。','ok');
+    }else if(mode==='signup'){
+      cloudStatus('账号已创建；请在邮箱完成一次验证，然后返回此页使用密码登录。','ok');
+    }
+  }catch(err){
+    const message=String(err.message||'');
+    cloudStatus(message.includes('over_email_send_rate_limit')?'验证邮件额度已用完，请约一小时后再首次注册。':(mode==='login'?'登录失败，请核对邮箱和密码。':'注册失败：'+message),'warn');
+  }
+}
+async function sendCloudLink(){
+  const email=String($('cloudEmail').value||'').trim();
+  if(!/^\S+@\S+\.\S+$/.test(email)){cloudStatus('请先填写正确的邮箱。','warn');return;}
+  try{
+    cloudStatus('正在发送登录链接…');
+    await cloudRequest('/auth/v1/otp',{method:'POST',body:JSON.stringify({email,create_user:true,options:{emailRedirectTo:location.origin+location.pathname}})});
+    cloudStatus('链接已发送到邮箱；请在本设备打开邮件中的链接。','ok');
+  }catch(err){cloudStatus('暂未能发送：'+err.message,'warn');}
+}
+async function cloudUploadBackup(event){
+  const file=event.target.files?.[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    try{
+      const candidate=normalizeBackup(JSON.parse(String(reader.result||'')));
+      if(!confirm(`将上传备份中的 ${candidate.records.length} 天记录，并以它作为云端初始数据。是否继续？`))return;
+      data=candidate;selectedDate=realToday();fill();await cloudPush('备份已上传到云端。');
+    }catch(err){cloudStatus('备份文件无法读取：'+(err.message||'格式不正确'),'warn');}
+    finally{event.target.value='';}
+  };
+  reader.readAsText(file);
+}
+async function cloudPush(successMessage='已同步到云端。'){
+  if(!cloudUserId()){cloudStatus('请先用邮箱登录。','warn');return;}
+  try{
+    cloudStatus('正在上传…');
+    data.cloudUpdatedAt=new Date().toISOString();
+    localStorage.setItem(KEY,JSON.stringify(data));
+    await cloudRequest('/rest/v1/'+CLOUD_SYNC.table,{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:cloudUserId(),payload:data,updated_at:data.cloudUpdatedAt})});
+    data.cloudLastSyncAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(data));
+    cloudStatus(successMessage+' 最近同步：'+syncTimeText(data.cloudLastSyncAt)+'。','ok');
+  }catch(err){cloudStatus('上传失败：'+String(err.message||'未知错误').replace(/\\s+/g,' ').slice(0,180),'warn');console.warn(err);}
+}
+async function cloudPull(){
+  if(!cloudUserId())return;
+  try{
+    cloudStatus('正在读取云端记录…');
+    const rows=await cloudRequest('/rest/v1/'+CLOUD_SYNC.table+'?user_id=eq.'+encodeURIComponent(cloudUserId())+'&select=payload,updated_at');
+    if(!rows?.length){cloudStatus('云端还没有记录，请先在一台设备点击“上传本机记录”。','warn');return;}
+    if(!confirm('将用云端记录覆盖本机记录。本机当前数据会被替换，是否继续？'))return;
+    data=normalizeBackup(rows[0].payload);data.cloudUpdatedAt=rows[0].updated_at||'';
+    localStorage.setItem(KEY,JSON.stringify(data));selectedDate=realToday();fill();
+    cloudStatus('已下载云端记录；之后每次保存会自动上传。','ok');updateSyncNotice();
+  }catch(err){cloudStatus('读取失败：'+String(err.message||'未知错误').slice(0,200),'warn');console.warn(err);}
+}
+function queueCloudPush(){if(cloudSession&&cloudUserId())setTimeout(()=>cloudPush(),80);}
+async function setupCloudSync(){
+  mountCloudSync();cloudSession=readCloudSession();renderCloudControls();updateSyncNotice();
+  if(cloudSession&&cloudTokenExpired()&&!(await refreshCloudSession())){cloudReady=true;return;}
+  renderCloudControls();
+  if(cloudSession&&cloudUserId())cloudStatus(data.cloudLastSyncAt?'云端同步已开启。':'已登录：首次请选择“上传本机记录”或“下载云端记录”。','ok');
+  cloudReady=true;
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));;queueCloudPush();}
 const DRAFT_KEY='phonics-helper-draft-v1';function childName(){return String(data.profile?.childName||'').trim();}function saveDraft(){const {target}=currentPlan();sessionStorage.setItem(DRAFT_KEY,JSON.stringify({date:target,errors:$('errorWords').value,khan:$('khanDone').value}));}function clearDraft(){sessionStorage.removeItem(DRAFT_KEY);}function renderDiagnostics(){const box=$('diagnosticContent');if(!box)return;const plans=allMasterPlans().map(x=>x.date).filter(Boolean).sort();box.textContent=`网页版本：20261111-26学习记录：${data.records.length} 天｜课程覆盖至：${plans.at(-1)||'未设置'}｜最近备份：${data.lastBackupAt||'尚备份'}｜数据只保存在本机浏览。`;}
 function speakWord(word){if(!('speechSynthesis' in window)){alert('当前浏览器不支持朗读。');return;}speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(word);utterance.lang='en-GB';utterance.rate=.82;speechSynthesis.speak(utterance);}
 function storyReader(text){return String(text).split(/(?<=[.!?])\s+/).filter(Boolean).map(sentence=>`<span class="story-sentence"><button type="button" class="speak-word" data-speak="${escapeHtml(sentence)}" aria-label="朗读这句话">🔊</button>${escapeHtml(sentence)}</span>`).join(' ');}
@@ -188,10 +332,11 @@ function rebuildWordState(){
 // 家长已确认的历史批改结果。首次打开新版网页时写入一次。
 // 11 月 10 日的记曾被旧版页面缓存错误覆盖，因本版会在每台设备上
 // 仅同步一次“家长最终确认”的数据，不影响之后手动录入的日期。
-const CORRECTION_SYNC_VERSION='2026-11-11-real-sheet-v4';
+const CORRECTION_SYNC_VERSION='2026-11-15-real-sheet-v6';
 const SEEDED_ERROR_RECORDS=[
   {date:'2026-11-09',errors:['holiday','postcard','singer','forest','cheese','collect','exercise','trousers','mountain']},
-  {date:'2026-11-10',errors:['collect','dress','phone','whose','chorus','postcard','mountain','forest','delicious','leaves','exercise']}
+  {date:'2026-11-10',errors:['collect','dress','phone','whose','chorus','postcard','mountain','forest','delicious','leaves','exercise']},
+  {date:'2026-11-13',errors:['leaves','forest','delicious','collect','towel','have a shower']}
 ];
 // 已确认的纸质默写表：批改页必须严格以它为准，不能再重新随机出题。
 const HISTORICAL_DICTATION_ITEMS={
@@ -200,30 +345,61 @@ const HISTORICAL_DICTATION_ITEMS={
     'dress','enjoy','phone','singer','whose','painting','chorus','postcard','between','photo album',
     'mountain','socks','lake','sun cream','stretch','forest','delicious','boots','cheese','leaves',
     'exercise','jellyfish','muscle','touch','heart','grass','pineapple','bounce','trunks','important'
-  ].map(word=>({word,tag:'11月10日实际默写'}))
+  ].map(word=>({word,tag:'11月10日实际默写'})),
+  '2026-11-13':[
+    'wake up','rhino','climb','postcard','whose','clean','walk','phrase','practise','quiet','sausage','between','trousers','muscle','collect','socks','prepare','forest','their','get up','get dressed','share','cheese','model','pretty','exercise','leaves','giraffe','touch','cousin','towel','stretch','have a shower','delicious','bounce','chorus','close','phone','important','favourite'
+  ].map(word=>({word,tag:'11月13日实际默写'})),
+  '2026-11-14':[
+    'leaves','forest','delicious','collect','towel','have a shower','practise','model','chorus','exercise','pretty','whose','phone','postcard','dress','mountain','holiday','singer','cheese','trousers','heart','jellyfish','trunks','volcano','enjoy','bounce','important','triangle','painting','pineapple','boots','socks','between','stretch','in front of','toothbrush','toothpaste','have breakfast','seven o\'clock','What time'
+  ].map(word=>({word,tag:'11月14日实际默写'}))
 };
 const cloneItems=items=>(items||[]).map(x=>typeof x==='string'?{word:x}:{...x});
+function mergeDailyNewWords(date, items){
+  const required=[
+    ...scheduledWords(date).map(word=>({word,tag:'今日新词·必默'})),
+    ...customPendingWords(date).map(item=>({word:item.word,tag:'家长新增·必默'}))
+  ];
+  const merged=[],seen=new Set();
+  [...required,...cloneItems(items)].forEach(item=>{
+    const word=norm(item?.word||item);
+    if(!word||seen.has(word))return;
+    seen.add(word);
+    merged.push({...item,word});
+  });
+  return merged;
+}
 function dictationItemsFor(date){
-  if(reviewMode&&queryDate===date&&queryItems.length)return cloneItems(queryItems);
-  if(HISTORICAL_DICTATION_ITEMS[date])return cloneItems(HISTORICAL_DICTATION_ITEMS[date]);
-  const saved=storedPlanFor(date);
-  if(saved)return saved;
-  const record=data.records.find(r=>r.date===date);
-  if(Array.isArray(record?.dictationItems)&&record.dictationItems.length&&hasRequiredNewWords(date,record.dictationItems))return cloneItems(record.dictationItems);
-  const planned=planForDate(date);
-  if(planned.length)return cloneItems(planned);
-  return cloneItems(masterPlanFor(date)?.words||[]);
+  let source=[];
+  if(reviewMode&&queryDate===date&&queryItems.length) source=cloneItems(queryItems);
+  else if(HISTORICAL_DICTATION_ITEMS[date]) source=cloneItems(HISTORICAL_DICTATION_ITEMS[date]);
+  else {
+    const saved=storedPlanFor(date);
+    if(saved) source=saved;
+    else {
+      const record=data.records.find(r=>r.date===date);
+      if(Array.isArray(record?.dictationItems)&&record.dictationItems.length&&hasRequiredNewWords(date,record.dictationItems)) source=cloneItems(record.dictationItems);
+      else {
+        const planned=planForDate(date);
+        source=planned.length?cloneItems(planned):cloneItems(masterPlanFor(date)?.words||[]);
+      }
+    }
+  }
+  // 每天要学的固定新词永远排在默写单最前面；既适用于旧清单，也适用于补批改。
+  return mergeDailyNewWords(date,source);
 }
 function seedKnownErrors(){
   data.records=Array.isArray(data.records)?data.records:[];
   data.printedPlans=data.printedPlans&&typeof data.printedPlans==='object'&&!Array.isArray(data.printedPlans)?data.printedPlans:{};
   // 历史修只迁移一次；清空或导入备份后不重新塞入旧学习记录。
-  const HISTORICAL_SEED_VERSION='2026-11-11-real-sheet-v5';
+  const HISTORICAL_SEED_VERSION='2026-11-15-sheet-v7';
   if(data.historicalSeedVersion===HISTORICAL_SEED_VERSION)return;
   // 早期测试曾把 11 月 4/5 日的示例计划保存手机浏览器。
   // 它们不是孩子真实学习记录；若本机尚没有 11 月 9 或 10 日的确认记录，
   // 自移除这批旧示例，再写入家长已确认过的真实数据。
   let changed=false;
+  // 旧版把家长确认的 11 月 13 日错词误写到 11 月 14 日；只移除该条自动种子，保留之后家长实际批改的 14 日记录。
+  const wrongNov14=data.records.find(record=>record.date==='2026-11-14'&&record.seed===true);
+  if(wrongNov14){data.records=data.records.filter(record=>record!==wrongNov14);delete data.printedPlans['2026-11-14'];changed=true;}
   const hasVerifiedRecord=data.records.some(r=>r.date==='2026-11-09'||r.date==='2026-11-10');
   if(!hasVerifiedRecord&&data.records.length){
     data.records=[];
@@ -232,26 +408,32 @@ function seedKnownErrors(){
     changed=true;
   }
   SEEDED_ERROR_RECORDS.forEach(seed=>{
-    const plan=masterPlanFor(seed.date); if(!plan?.words?.length)return;
+    const plan=masterPlanFor(seed.date);
     const next=masterPlanFor(plus(seed.date,1));
     const actualItems=HISTORICAL_DICTATION_ITEMS[seed.date]?cloneItems(HISTORICAL_DICTATION_ITEMS[seed.date]):null;
+    // 复习日也可能有家长实际出的默写单；有纸质清单时必须保留，不能因当天没有固定新词而跳过。
+    if(!plan?.words?.length&&!actualItems?.length)return;
     if(actualItems&&(!data.printedPlans[seed.date]||data.correctionSyncVersion!==CORRECTION_SYNC_VERSION)){
       data.printedPlans[seed.date]=cloneItems(actualItems);changed=true;
     }
-    const newWords=plan.words.map(x=>norm(x.word));
+    const newWords=(plan?.words||[]).map(x=>norm(x.word));
     const errors=seed.errors.map(norm);
     const old=data.records.find(r=>r.date===seed.date);
     if(!old){
-      data.records.push({date:seed.date,newWords,errors,nextNewWords:(next?.words||[]).map(x=>norm(x.word)),newItems:plan.words,errorItems:errors.map(word=>({word})),nextNewItems:next?.words||[],dictationItems:actualItems||undefined,reviewedWords:actualItems?actualItems.map(x=>norm(x.word)):[...new Set([...newWords,...errors])],khan:'',masterFocus:plan.focus||'',seed:true});
+      data.records.push({date:seed.date,newWords,errors,nextNewWords:(next?.words||[]).map(x=>norm(x.word)),newItems:plan?.words||[],errorItems:errors.map(word=>({word})),nextNewItems:next?.words||[],dictationItems:actualItems||undefined,reviewedWords:actualItems?actualItems.map(x=>norm(x.word)):[...new Set([...newWords,...errors])],khan:'',masterFocus:plan?.focus||'',seed:true});
       changed=true;
       return;
     }
     // 已存在的 11 月 10 日记录也必须改正为本次家长给出的 11 个错词。
-    if(seed.date==='2026-11-10'&&data.correctionSyncVersion!==CORRECTION_SYNC_VERSION){
-      Object.assign(old,{newWords,errors,nextNewWords:(next?.words||[]).map(x=>norm(x.word)),newItems:plan.words,errorItems:errors.map(word=>({word})),nextNewItems:next?.words||[],dictationItems:actualItems,reviewedWords:actualItems.map(x=>norm(x.word)),masterFocus:plan.focus||old.masterFocus||'',syncedCorrection:CORRECTION_SYNC_VERSION});
+    if((seed.date==='2026-11-10'||seed.date==='2026-11-13')&&data.correctionSyncVersion!==CORRECTION_SYNC_VERSION){
+      Object.assign(old,{newWords,errors,nextNewWords:(next?.words||[]).map(x=>norm(x.word)),newItems:plan?.words||[],errorItems:errors.map(word=>({word})),nextNewItems:next?.words||[],dictationItems:actualItems,reviewedWords:actualItems.map(x=>norm(x.word)),masterFocus:plan?.focus||old.masterFocus||'',syncedCorrection:CORRECTION_SYNC_VERSION});
       changed=true;
     }
   });
+  // 11 月 14 日已默写但未批改：只保留原题清单，绝不预先写入错误。
+  if(!data.records.some(record=>record.date==='2026-11-14')){
+    data.printedPlans['2026-11-14']=cloneItems(HISTORICAL_DICTATION_ITEMS['2026-11-14']);changed=true;
+  }
   data.historicalSeedVersion=HISTORICAL_SEED_VERSION;
   if(!changed){save();return;}
   data.records.sort((a,b)=>a.date.localeCompare(b.date));
@@ -485,8 +667,37 @@ function removeMojibake(){
   const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
   nodes.forEach(node=>{node.nodeValue=node.nodeValue.replace(/\uFFFD+/g,'');});
 }
+function pendingCorrectionDates(){return correctionDates().filter(day=>day<realToday()&&!data.records.some(record=>record.date===day));}
+function renderPendingCorrections(){
+  const box=$('pendingCorrection');if(!box)return;
+  const pending=pendingCorrectionDates();
+  box.hidden=!pending.length;if(!pending.length)return;
+  const first=pending.at(-1);$('pendingCorrectionText').textContent=`有 ${pending.length} 天待补批改，最早是 ${dateLabel(first)}。补批改后会自动更新后续未批改清单。`;
+  $('openPendingCorrection').onclick=()=>{selectedDate=first;fill();setTimeout(()=>$('correctionBox').scrollIntoView({behavior:'smooth',block:'start'}),0);};
+}
+function pasteWords(list){
+  return [...new Set((list||[]).map(item=>norm(typeof item==='string'?item:item.word)).filter(Boolean))];
+}
+function renderPasteList(){
+  const box=$('pasteWordList');if(!box)return;
+  const {target,list}=currentPlan(),words=pasteWords(list);
+  box.value=words.join('\n');$('pasteWordCount').textContent=`${dateLabel(target)} · 共 ${words.length} 个词（每行一个，可直接粘贴；与下方本次批改单完全一致）`;
+  const nextBox=$('nextPasteWordList');if(!nextBox)return;
+  const next=nextPlan(),nextWords=next.awaitingCorrection?[]:pasteWords(next.list);
+  nextBox.value=nextWords.join('\n');
+  $('nextPasteWordCount').textContent=next.awaitingCorrection?'请先保存当天的批改结果；系统会依据错词和记忆曲线生成下一次清单。':`${dateLabel(next.target)} · 共 ${nextWords.length} 个词（每行一个，可直接粘贴）`;
+  $('nextPasteBadge').textContent=next.awaitingCorrection?'待当天批改':'已生成';
+}
+async function copyTextFrom(boxId,emptyMessage,successMessage){
+  const box=$(boxId),text=box?.value||'';
+  if(!text){alert(emptyMessage);return;}
+  try{await navigator.clipboard.writeText(text);showSaveToast(successMessage);}
+  catch{box.focus();box.select();document.execCommand('copy');showSaveToast(successMessage);}
+}
+async function copyPasteWords(){return copyTextFrom('pasteWordList','当前没有可复制的默写词。','已复制本次默写词，可直接粘贴到其他软件。');}
+async function copyNextPasteWords(){return copyTextFrom('nextPasteWordList','请先保存当天批改结果，再复制下一次待默写词。','已复制下一次待默写词，可直接粘贴到其他软件。');}
 function render(){const {target,list}=currentPlan(),next=nextPlan(); const dailyRecord=currentDailyRecord(target,list); const last=data.records.at(-1); const ws=weakness(); const targetFocus=masterPlanFor(target)?.focus||''; const rec=khanRecommendation(ws,targetFocus);
-  renderCorrectionPicker();renderCorrectionQr();
+  renderCorrectionPicker();renderCorrectionQr();renderPendingCorrections();renderPasteList();
   ['plan'].forEach(id=>$(id).classList.remove('hidden'));
   if(last||Object.values(data.tests||{}).some(x=>x!=='')){['analysis','khanPlan','checkPlan','weekend','history','progress','weekReport'].forEach(id=>$(id).classList.remove('hidden'));}
   $('nextDate').textContent='（'+next.target+'）';
@@ -544,7 +755,7 @@ function saveRecord(){
   // 新词不再由家长手输始终以总表为准；家长每天只录批改后的错误词。
   const newItems=master?.words||[],errorItems=parseEntries($('errorWords').value),nextNewItems=nextMaster?.words||[];
   const newWords=newItems.map(x=>x.word),errors=errorItems.map(x=>x.word),nextNewWords=nextNewItems.map(x=>x.word);
-  if(!newWords.length&&!errors.length){alert('请至输入今天的新词或错词。');return}
+  if(!dictationItems.length&&!newWords.length&&!errors.length){alert('当前没有可保存的默写词，请先确认学习日期。');return}
   // 当天打印过的清单就是当天实默写池；这样扫码勾错或手工录后，所有正确词都会进入下一轮线。
   data.printedPlans[date]=cloneItems(dictationItems);
   const reviewedWords=dictationItems.map(x=>norm(x.word));
@@ -553,7 +764,7 @@ function saveRecord(){
   data.records.push(record);data.records.sort((a,b)=>a.date.localeCompare(b.date));invalidateUncorrectedFuturePlans(date);rebuildWordState();
   // 保存下一次清单；明天录入批改结果后，系统就知道哪些词实际参与过默写。
   record.nextPlan=buildPlan(plus(date,1)).list;
-  clearDraft();save();render();const next=nextPlan(),health=planHealth(next.target,next.list);if(!health.ok){alert(`已保存今天的错词，但下一次清单校验未通过：缺少 ${health.missing.join('、')||'固定新词'}。请不要使用该清单。`);return;}const backupDue=!data.lastBackupAt||Date.now()-new Date(data.lastBackupAt).getTime()>7*86400000;showActionToast(`已保存 ${date}：错词 ${errors.length} 个；已生成 ${next.target} 的 ${next.list.length} 个待默写单词。${backupDue?' 建议现在备份一次。':''}`,backupDue?'导出备份':'',backupDue?()=>$('exportData').click():undefined);document.getElementById('plan').scrollIntoView({behavior:'smooth'});
+  clearDraft();save();render();const next=nextPlan(),health=planHealth(next.target,next.list);if(!health.ok){alert(`已保存今天的错词，但下一次清单校验未通过：缺少 ${health.missing.join('、')||'固定新词'}。请不要使用该清单。`);return;}const nextCard=$('nextPasteCard');if(nextCard){nextCard.open=true;setTimeout(()=>nextCard.scrollIntoView({behavior:'smooth',block:'center'}),80);}const backupDue=!data.lastBackupAt||Date.now()-new Date(data.lastBackupAt).getTime()>7*86400000;showActionToast(`已保存 ${date}：错词 ${errors.length} 个；已生成 ${next.target} 的 ${next.list.length} 个待默写单词，现在可直接复制。`,backupDue?'导出备份':'',backupDue?()=>$('exportData').click():undefined);
 }
 function saveTest(){data.tests={combo:$('comboScore').value,decode:$('decodeScore').value,magic:$('magicScore').value,syllable:$('syllableScore').value};save();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -564,6 +775,8 @@ function correctionDates(){
   const dates=allMasterPlans().map(x=>x.date).filter(Boolean).concat(data.records.map(x=>x.date),Object.keys(HISTORICAL_DICTATION_ITEMS||{}));
   const first=dates.sort()[0]||realToday(),result=[];
   for(let day=first;day<=realToday();day=plus(day,1))result.push(day);
+  const tomorrow=plus(realToday(),1),todayCompleted=data.records.some(r=>r.date===realToday()&&!r.seed);
+  if(todayCompleted&&planForDate(tomorrow).length)result.push(tomorrow);
   return [...new Set([...result,selectedDate||realToday()])].sort((a,b)=>b.localeCompare(a));
 }
 function latestErrorDate(word){
@@ -588,13 +801,16 @@ function renderCorrectionPicker(){
   const {target:date,list:planned}=currentPlan(), master=masterPlanFor(date);
   $('studyDate').value=date;
   const picker=$('correctionDatePicker');
-  picker.innerHTML=correctionDates().map(day=>`<option value="${day}">${dateLabel(day)}${data.records.some(r=>r.date===day&&!r.seed)?'（已批改，可修改）':'（可补批改）'}</option>`).join('');
+  const previewOnly=date>realToday();
+  picker.innerHTML=correctionDates().map(day=>`<option value="${day}">${dateLabel(day)}${day>realToday()?'（明天待默写，仅查看）':(data.records.some(r=>r.date===day&&!r.seed)?'（已批改，可修改）':'（可补批改）')}</option>`).join('');
   picker.value=date;
   const list=sortCorrectionItems(planned.length?planned:(master?.words||[]).map(x=>({...x,tag:'当天新词'})));
   const selected=new Set(parseEntries($('errorWords').value).map(x=>x.word));
   $('correctionDate').textContent=date;
-  const counts=allErrorCounts(),metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{const detail=itemFor(x.word,metas),count=counts[norm(x.word)]||0,last=latestErrorDate(x.word);return `<label class="correction-choice"><input type="checkbox" value="${escapeHtml(x.word)}" ${selected.has(norm(x.word))?'checked':''}><span>${i+1}. <b>${highlightEnglish(x.word)}</b> <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><small>${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small>${escapeHtml(x.tag||'')}｜历史错误 ${count} 次${last?`｜最近 ${last}`:''}</small></span></label>`}).join(''):'<p>这一天暂时没有可供批改的默写词。</p>';
-  document.querySelectorAll('#correctionWords input').forEach(input=>input.onchange=syncCheckedErrors);
+  const counts=allErrorCounts(),metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{const detail=itemFor(x.word,metas),count=counts[norm(x.word)]||0,last=latestErrorDate(x.word);return `<label class="correction-choice ${previewOnly?'preview-only':''}"><input type="checkbox" value="${escapeHtml(x.word)}" ${selected.has(norm(x.word))?'checked':''} ${previewOnly?'disabled':''}><span>${i+1}. <b>${highlightEnglish(x.word)}</b> <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><small>${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small>${escapeHtml(x.tag||'')}｜历史错误 ${count} 次${last?`｜最近 ${last}`:''}</small></span></label>`}).join(''):'<p>这一天暂时没有可供批改的默写词。</p>';
+  const saveButton=$('saveAndPlan');saveButton.disabled=previewOnly;
+  if(previewOnly){$('lateCorrectionHint').textContent='正在查看系统生成的明天默写词：仅供预习、朗读和复制，明天默写后再回来批改。';}
+  document.querySelectorAll('#correctionWords input:not(:disabled)').forEach(input=>input.onchange=syncCheckedErrors);
 }
 function renderCorrectionQr(){
   const box=$('qrAccess');if(!box)return;
@@ -679,6 +895,7 @@ $('returnToday').onclick=()=>{if(reviewMode)return;selectedDate=realToday();fill
 $('errorWords').onchange=()=>{saveDraft();renderCorrectionPicker();};$('khanDone').onchange=saveDraft;
 $('addCustomWords').onclick=addCustomWords;
 $('childName').onchange=()=>{data.profile={...(data.profile||{}),childName:$('childName').value.trim()};save();};$('ruleExceptions').onchange=()=>{data.ruleExceptions=parseLines($('ruleExceptions').value);save();render();};document.addEventListener('click',e=>{const button=e.target.closest('[data-speak]');if(button)speakWord(button.dataset.speak);});
+$('copyPasteWords').onclick=copyPasteWords;$('copyNextPasteWords').onclick=copyNextPasteWords;
 $('selectAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=true);syncCheckedErrors();};
 $('clearAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=false);syncCheckedErrors();};
 $('exportWeeklyReport').onclick=()=>{const weekly=weeklyReport();downloadDoc(`英语拼读周报_${iso(new Date())}.doc`,worksheetHtml('英语读周报',weekly.html));};
@@ -686,10 +903,10 @@ $('exportData').onclick=()=>{data.lastBackupAt=new Date().toISOString();save();c
 $('importPlan').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(reader.result),plans=Array.isArray(raw)?raw:raw.days,dates=new Set();if(!Array.isArray(plans)||!plans.length||plans.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')||!Array.isArray(x.words)||!x.words.length||dates.has(x.date)||(dates.add(x.date),false)))throw new Error('日期不能重复，且每一天必有至少一个单词');data.curriculumPlan=plans;save();fill();alert(`已导入 ${plans.length} 天课程计划。`);}catch(err){alert(`课程计划导入失败：${err.message||'格式不正确'}。`);}finally{e.target.value='';}};reader.readAsText(file)};
 $('importData').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const imported=normalizeBackup(JSON.parse(r.result));data=imported;save();selectedDate=realToday();fill();alert(`导入成：已恢复 ${data.records.length} 天学记录。`);}catch(err){alert(`导入失败${err.message||'备份文件格式不正确'}。原有数据未修改。`);}finally{e.target.value='';}};r.readAsText(f)};
 $('resetData').onclick=()=>{if(confirm('确定清空本手机的全部记录吗？此操作不能恢复；如有需要请先导出备份。')){data={records:[],tests:{},customWords:[],printedPlans:{},wordState:{},historicalSeedVersion:'2026-11-11-real-sheet-v5',correctionSyncVersion:CORRECTION_SYNC_VERSION};save();selectedDate=realToday();fill();alert('本机学习记录已清空。');}};
-$('refreshApp').onclick=()=>{const url=new URL(location.href);url.searchParams.set('v','20261115-16');url.searchParams.set('fresh',String(Date.now()));location.replace(url.toString());};
+$('refreshApp').onclick=()=>location.reload();
 let advancedShown=false;let simpleMode=localStorage.getItem('phonics-simple-mode')!=='0';document.body.classList.toggle('simple-mode',simpleMode);$('simpleMode').textContent=simpleMode?'退出今日简洁模式':'切换为今日简洁模式';$('simpleMode').onclick=()=>{simpleMode=!simpleMode;localStorage.setItem('phonics-simple-mode',simpleMode?'1':'0');document.body.classList.toggle('simple-mode',simpleMode);$('simpleMode').textContent=simpleMode?'退出今日简洁模式':'切换为今日简洁模式';};
 $('toggleAdvanced').onclick=()=>{advancedShown=!advancedShown;document.querySelectorAll('.advanced-card').forEach(x=>x.classList.toggle('shown',advancedShown));$('toggleAdvanced').textContent=advancedShown?'收起更多功能':'显示更多功能（规则卡、可汗记录、备份）';};
-try{fill();}catch(err){
+try{fill();setupCloudSync();}catch(err){
   console.error(err);
 $('studyDate').value=reviewMode&&queryDate?queryDate:realToday();
   fillMasterPlan();
