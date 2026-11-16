@@ -4,6 +4,9 @@ const cp=require('node:child_process');
 const html=fs.readFileSync('index.html','utf8');
 const scripts=[...html.matchAll(/<script[^>]+src=["']\.\/([^"'?]+\.js)(?:\?[^"']*)?["']/g)].map(match=>match[1]);
 
+const cacheControlCount=(html.match(/<meta http-equiv="Cache-Control"/g)||[]).length;
+if(cacheControlCount>1)throw new Error(`index.html has ${cacheControlCount} duplicate Cache-Control meta tags`);
+
 if(!scripts.length)throw new Error('index.html does not load any JavaScript files');
 
 for(const file of scripts){
