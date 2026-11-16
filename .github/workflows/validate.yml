@@ -11,6 +11,7 @@ jobs:
       - run: node tests/validate-static-site.js
       - run: node --check sw.js
       - run: node tests/business-regression.js
+      - run: node tests/next-plan-regression.js
       - run: |
           grep -q 'id="planSummary"' index.html
           grep -q 'fetch(event.request)' sw.js
