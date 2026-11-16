@@ -755,7 +755,7 @@ function saveRecord(){
   // 新词不再由家长手输始终以总表为准；家长每天只录批改后的错误词。
   const newItems=master?.words||[],errorItems=parseEntries($('errorWords').value),nextNewItems=nextMaster?.words||[];
   const newWords=newItems.map(x=>x.word),errors=errorItems.map(x=>x.word),nextNewWords=nextNewItems.map(x=>x.word);
-  if(!newWords.length&&!errors.length){alert('请至输入今天的新词或错词。');return}
+  if(!dictationItems.length&&!newWords.length&&!errors.length){alert('当前没有可保存的默写词，请先确认学习日期。');return}
   // 当天打印过的清单就是当天实默写池；这样扫码勾错或手工录后，所有正确词都会进入下一轮线。
   data.printedPlans[date]=cloneItems(dictationItems);
   const reviewedWords=dictationItems.map(x=>norm(x.word));
@@ -764,7 +764,7 @@ function saveRecord(){
   data.records.push(record);data.records.sort((a,b)=>a.date.localeCompare(b.date));invalidateUncorrectedFuturePlans(date);rebuildWordState();
   // 保存下一次清单；明天录入批改结果后，系统就知道哪些词实际参与过默写。
   record.nextPlan=buildPlan(plus(date,1)).list;
-  clearDraft();save();render();const next=nextPlan(),health=planHealth(next.target,next.list);if(!health.ok){alert(`已保存今天的错词，但下一次清单校验未通过：缺少 ${health.missing.join('、')||'固定新词'}。请不要使用该清单。`);return;}const backupDue=!data.lastBackupAt||Date.now()-new Date(data.lastBackupAt).getTime()>7*86400000;showActionToast(`已保存 ${date}：错词 ${errors.length} 个；已生成 ${next.target} 的 ${next.list.length} 个待默写单词。${backupDue?' 建议现在备份一次。':''}`,backupDue?'导出备份':'',backupDue?()=>$('exportData').click():undefined);document.getElementById('plan').scrollIntoView({behavior:'smooth'});
+  clearDraft();save();render();const next=nextPlan(),health=planHealth(next.target,next.list);if(!health.ok){alert(`已保存今天的错词，但下一次清单校验未通过：缺少 ${health.missing.join('、')||'固定新词'}。请不要使用该清单。`);return;}const nextCard=$('nextPasteCard');if(nextCard){nextCard.open=true;setTimeout(()=>nextCard.scrollIntoView({behavior:'smooth',block:'center'}),80);}const backupDue=!data.lastBackupAt||Date.now()-new Date(data.lastBackupAt).getTime()>7*86400000;showActionToast(`已保存 ${date}：错词 ${errors.length} 个；已生成 ${next.target} 的 ${next.list.length} 个待默写单词，现在可直接复制。`,backupDue?'导出备份':'',backupDue?()=>$('exportData').click():undefined);
 }
 function saveTest(){data.tests={combo:$('comboScore').value,decode:$('decodeScore').value,magic:$('magicScore').value,syllable:$('syllableScore').value};save();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -898,7 +898,7 @@ $('exportData').onclick=()=>{data.lastBackupAt=new Date().toISOString();save();c
 $('importPlan').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(reader.result),plans=Array.isArray(raw)?raw:raw.days,dates=new Set();if(!Array.isArray(plans)||!plans.length||plans.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')||!Array.isArray(x.words)||!x.words.length||dates.has(x.date)||(dates.add(x.date),false)))throw new Error('日期不能重复，且每一天必有至少一个单词');data.curriculumPlan=plans;save();fill();alert(`已导入 ${plans.length} 天课程计划。`);}catch(err){alert(`课程计划导入失败：${err.message||'格式不正确'}。`);}finally{e.target.value='';}};reader.readAsText(file)};
 $('importData').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const imported=normalizeBackup(JSON.parse(r.result));data=imported;save();selectedDate=realToday();fill();alert(`导入成：已恢复 ${data.records.length} 天学记录。`);}catch(err){alert(`导入失败${err.message||'备份文件格式不正确'}。原有数据未修改。`);}finally{e.target.value='';}};r.readAsText(f)};
 $('resetData').onclick=()=>{if(confirm('确定清空本手机的全部记录吗？此操作不能恢复；如有需要请先导出备份。')){data={records:[],tests:{},customWords:[],printedPlans:{},wordState:{},historicalSeedVersion:'2026-11-11-real-sheet-v5',correctionSyncVersion:CORRECTION_SYNC_VERSION};save();selectedDate=realToday();fill();alert('本机学习记录已清空。');}};
-$('refreshApp').onclick=()=>{const url=new URL('./index.html',location.href);url.searchParams.set('build','20261115-35');location.replace(url.toString());};
+$('refreshApp').onclick=()=>location.reload();
 let advancedShown=false;let simpleMode=localStorage.getItem('phonics-simple-mode')!=='0';document.body.classList.toggle('simple-mode',simpleMode);$('simpleMode').textContent=simpleMode?'退出今日简洁模式':'切换为今日简洁模式';$('simpleMode').onclick=()=>{simpleMode=!simpleMode;localStorage.setItem('phonics-simple-mode',simpleMode?'1':'0');document.body.classList.toggle('simple-mode',simpleMode);$('simpleMode').textContent=simpleMode?'退出今日简洁模式':'切换为今日简洁模式';};
 $('toggleAdvanced').onclick=()=>{advancedShown=!advancedShown;document.querySelectorAll('.advanced-card').forEach(x=>x.classList.toggle('shown',advancedShown));$('toggleAdvanced').textContent=advancedShown?'收起更多功能':'显示更多功能（规则卡、可汗记录、备份）';};
 try{fill();setupCloudSync();}catch(err){
