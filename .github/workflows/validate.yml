@@ -12,6 +12,7 @@ jobs:
       - run: node --check sw.js
       - run: node tests/business-regression.js
       - run: node tests/next-plan-regression.js
+      - run: node tests/storage-recovery.js
       - run: |
           grep -q 'id="planSummary"' index.html
           grep -q 'fetch(event.request)' sw.js
