@@ -7,6 +7,15 @@ const scripts=[...html.matchAll(/<script[^>]+src=["']\.\/([^"'?]+\.js)(?:\?[^"']
 const cacheControlCount=(html.match(/<meta http-equiv="Cache-Control"/g)||[]).length;
 if(cacheControlCount>1)throw new Error(`index.html has ${cacheControlCount} duplicate Cache-Control meta tags`);
 
+const linkedAssets=[
+  ...[...html.matchAll(/<link[^>]+href=["']\.\/([^"'?]+(?:\.css|\.webmanifest|\.svg))(?:\?[^"']*)?["']/g)].map(match=>match[1]),
+  ...scripts
+];
+const serviceWorker=fs.readFileSync('sw.js','utf8');
+const cachedAssets=[...serviceWorker.matchAll(/'\.\/([^']+)'/g)].map(match=>match[1]);
+const missingCachedAssets=linkedAssets.filter(asset=>!cachedAssets.includes(asset));
+if(missingCachedAssets.length)throw new Error(`sw.js does not cache: ${missingCachedAssets.join(', ')}`);
+
 if(!scripts.length)throw new Error('index.html does not load any JavaScript files');
 
 for(const file of scripts){
@@ -18,6 +27,6 @@ const app=scripts.find(file=>/^app(?:-|\.js$)/.test(file));
 if(!app)throw new Error('index.html does not load an app script');
 
 const source=fs.readFileSync(app,'utf8');
-for(const symbol of ['function nextPlan(','function normalizeBackup','function renderProgress']){
+for(const symbol of ['function nextPlan(','function normalizeBackup','function renderProgress','serviceWorker.register']){
   if(!source.includes(symbol))throw new Error(`${app} is missing ${symbol}`);
 }
