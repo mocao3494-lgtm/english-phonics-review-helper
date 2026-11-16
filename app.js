@@ -281,7 +281,7 @@ async function setupCloudSync(){
   cloudReady=true;
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(data));;queueCloudPush();}
-const DRAFT_KEY='phonics-helper-draft-v1';function childName(){return String(data.profile?.childName||'').trim();}function saveDraft(){const {target}=currentPlan();sessionStorage.setItem(DRAFT_KEY,JSON.stringify({date:target,errors:$('errorWords').value,khan:$('khanDone').value}));}function clearDraft(){sessionStorage.removeItem(DRAFT_KEY);}function renderDiagnostics(){const box=$('diagnosticContent');if(!box)return;const plans=allMasterPlans().map(x=>x.date).filter(Boolean).sort();box.textContent=`网页版本：20261111-26学习记录：${data.records.length} 天｜课程覆盖至：${plans.at(-1)||'未设置'}｜最近备份：${data.lastBackupAt||'尚备份'}｜数据只保存在本机浏览。`;}
+const DRAFT_KEY='phonics-helper-draft-v1';function childName(){return String(data.profile?.childName||'').trim();}function saveDraft(){const {target}=currentPlan();sessionStorage.setItem(DRAFT_KEY,JSON.stringify({date:target,errors:$('errorWords').value,khan:$('khanDone').value}));}function clearDraft(){sessionStorage.removeItem(DRAFT_KEY);}function renderDiagnostics(){const box=$('diagnosticContent');if(!box)return;const plans=allMasterPlans().map(x=>x.date).filter(Boolean).sort(),build=document.documentElement.dataset.build||'未知';box.textContent=`网页版本：${build}｜学习记录：${data.records.length} 天｜课程覆盖至：${plans.at(-1)||'未设置'}｜最近备份：${data.lastBackupAt||'尚未备份'}｜数据只保存在本机浏览。`;}
 function speakWord(word){if(!('speechSynthesis' in window)){alert('当前浏览器不支持朗读。');return;}speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(word);utterance.lang='en-GB';utterance.rate=.82;speechSynthesis.speak(utterance);}
 function storyReader(text){return String(text).split(/(?<=[.!?])\s+/).filter(Boolean).map(sentence=>`<span class="story-sentence"><button type="button" class="speak-word" data-speak="${escapeHtml(sentence)}" aria-label="朗读这句话">🔊</button>${escapeHtml(sentence)}</span>`).join(' ');}
 function showActionToast(message,label,action){
@@ -545,11 +545,7 @@ function currentPlan(){
 // 批改始终对应当天；“一次默写”则必须读取下一天的立计划。
 function nextPlan(){
   const {target:currentDate}=currentPlan();
-  const target=plus(currentDate,1);
-  // 复习词必须等今天批改保存后才会定稿；批改前只允许查看课程表中的固定新词预告。
-  const completed=data.records.some(r=>r.date===currentDate&&!r.seed);
-  if(!completed)return {target,list:[],awaitingCorrection:true};
-  return {target,list:planForDate(target)};
+  return nextPlanState({currentDate,records:data.records,planForDate});
 }
 function invalidateUncorrectedFuturePlans(fromDate){
   // 补录漏掉的日期后，尚未批改的未来预览必须作废并按新错词重新生成；
