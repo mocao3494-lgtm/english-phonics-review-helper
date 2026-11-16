@@ -4,7 +4,16 @@ const today=new Date();
 const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
 const plus=(date,days)=>{const d=new Date(date+'T12:00:00');d.setDate(d.getDate()+days);return iso(d)};
 const norm=s=>s.trim().toLowerCase().replace(/\s+/g,' ');
-let data=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(LEGACY_KEY)||'{"records":[],"tests":{}}');
+function loadStoredData(){
+  const raw=localStorage.getItem(KEY)||localStorage.getItem(LEGACY_KEY)||'';
+  const parsed=parseStoredData(raw);
+  if(parsed.corrupted){
+    try{localStorage.setItem(KEY+'-corrupt-'+Date.now(),raw);}catch{}
+    parsed.data.recoveryWarning='检测到本机学习数据损坏，已保留原始副本并以空白记录启动。请尽快导出当前数据或从备份恢复。';
+  }
+  return parsed.data;
+}
+let data=loadStoredData();
 data.customWords=Array.isArray(data.customWords)?data.customWords:[];
 const query=new URLSearchParams(location.search);
 const reviewMode=query.get('mark')==='1';
@@ -156,7 +165,7 @@ const WEEK=['星期','星期一','星期二','星期三','星四','星期五','�
 const CLOUD_SYNC={url:'https://hafdtxwbnzoezxsqyaqn.supabase.co',key:'sb_publishable_7aDPR81-sJG4-SKtqj888w_C1N2TnYB',table:'learning_sync',sessionKey:'phonics-cloud-session-v1'};
 let cloudSession=null,cloudReady=false,cloudRecoveryMode=false;
 function syncTimeText(value){if(!value)return '尚未同步';const date=new Date(value);return Number.isNaN(date.getTime())?'尚未同步':date.toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});}
-function updateSyncNotice(){const notice=$('dataNotice');if(!notice)return;if(cloudSession&&cloudUserId()){notice.textContent=`☁ 云端同步已开启：每次保存会自动上传。最近同步：${syncTimeText(data.cloudLastSyncAt||data.cloudUpdatedAt)}。`;notice.classList.add('cloud-notice');}else{notice.textContent='数据目前仅保存在本机浏览器；登录云端同步后，保存会自动上传。';notice.classList.remove('cloud-notice');}}
+function updateSyncNotice(){const notice=$('dataNotice');if(!notice)return;const warning=data.recoveryWarning?' '+data.recoveryWarning:'';if(cloudSession&&cloudUserId()){notice.textContent='☁ 云端同步已开启：每次保存会自动上传。最近同步：'+syncTimeText(data.cloudLastSyncAt||data.cloudUpdatedAt)+'。'+warning;notice.classList.add('cloud-notice');}else{notice.textContent='数据目前仅保存在本机浏览器；登录云端同步后，保存会自动上传。'+warning;notice.classList.remove('cloud-notice');}}
 function cloudStatus(text,tone=''){const el=$('cloudStatus');if(el){el.textContent=text;el.className='cloud-status '+tone;}updateSyncNotice();}
 function decodeJwt(token){try{return JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))));}catch{return null;}}
 function readCloudSession(){const hash=new URLSearchParams(location.hash.slice(1));cloudRecoveryMode=hash.get('type')==='recovery';const token=hash.get('access_token'),refresh=hash.get('refresh_token');if(token){const session={access_token:token,refresh_token:refresh||'',user:decodeJwt(token),savedAt:Date.now()};localStorage.setItem(CLOUD_SYNC.sessionKey,JSON.stringify(session));history.replaceState(null,'',location.pathname+location.search);return session;}try{return JSON.parse(localStorage.getItem(CLOUD_SYNC.sessionKey)||'null');}catch{return null;}}
@@ -693,7 +702,7 @@ async function copyTextFrom(boxId,emptyMessage,successMessage){
 async function copyPasteWords(){return copyTextFrom('pasteWordList','当前没有可复制的默写词。','已复制本次默写词，可直接粘贴到其他软件。');}
 async function copyNextPasteWords(){return copyTextFrom('nextPasteWordList','请先保存当天批改结果，再复制下一次待默写词。','已复制下一次待默写词，可直接粘贴到其他软件。');}
 function render(){const {target,list}=currentPlan(),next=nextPlan(); const dailyRecord=currentDailyRecord(target,list); const last=data.records.at(-1); const ws=weakness(); const targetFocus=masterPlanFor(target)?.focus||''; const rec=khanRecommendation(ws,targetFocus);
-  renderCorrectionPicker();renderCorrectionQr();renderPendingCorrections();renderPasteList();
+  renderCorrectionPicker();renderPendingCorrections();renderPasteList();
   ['plan'].forEach(id=>$(id).classList.remove('hidden'));
   if(last||Object.values(data.tests||{}).some(x=>x!=='')){['analysis','khanPlan','checkPlan','weekend','history','progress','weekReport'].forEach(id=>$(id).classList.remove('hidden'));}
   $('nextDate').textContent='（'+next.target+'）';
@@ -808,16 +817,6 @@ function renderCorrectionPicker(){
   if(previewOnly){$('lateCorrectionHint').textContent='正在查看系统生成的明天默写词：仅供预习、朗读和复制，明天默写后再回来批改。';}
   document.querySelectorAll('#correctionWords input:not(:disabled)').forEach(input=>input.onchange=syncCheckedErrors);
 }
-function renderCorrectionQr(){
-  const box=$('qrAccess');if(!box)return;
-  const {target:date,list}=currentPlan();
-  if(reviewMode){
-    box.innerHTML=`<div><b>正在批改 ${escapeHtml(dateLabel(date))} 的默写</b><span>只勾选写错的词，再点下方“保存错词”。</span><a href="./">返回今天学习页</a></div>`;
-    return;
-  }
-  const url=publicPageUrl(date,list);
-  box.innerHTML=`<img src="${qrImageUrl(url)}" alt="当天批改二码"><div><b>当天批改二维码</b><span>打印后用微信扫一扫，直接进入当天的勾错页。</span><a href="${escapeHtml(url)}">二维码未显示？直接点此进入批改</a></div>`;
-}
 async function enrichCustomEntry(entry){
   const base=itemFor(entry.word,allMetas());
   let gloss=entry.gloss||(!base.gloss.startsWith('请按')?base.gloss:''),ipa=entry.ipa||(!base.ipa.startsWith('请按')?base.ipa:''),pos=base.pos||'';
@@ -910,6 +909,6 @@ try{fill();setupCloudSync();}catch(err){
 $('studyDate').value=reviewMode&&queryDate?queryDate:realToday();
   fillMasterPlan();
   renderCorrectionPicker();
-  renderCorrectionQr();
+  
 }
 
