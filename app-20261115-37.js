@@ -775,6 +775,8 @@ function correctionDates(){
   const dates=allMasterPlans().map(x=>x.date).filter(Boolean).concat(data.records.map(x=>x.date),Object.keys(HISTORICAL_DICTATION_ITEMS||{}));
   const first=dates.sort()[0]||realToday(),result=[];
   for(let day=first;day<=realToday();day=plus(day,1))result.push(day);
+  const tomorrow=plus(realToday(),1),todayCompleted=data.records.some(r=>r.date===realToday()&&!r.seed);
+  if(todayCompleted&&planForDate(tomorrow).length)result.push(tomorrow);
   return [...new Set([...result,selectedDate||realToday()])].sort((a,b)=>b.localeCompare(a));
 }
 function latestErrorDate(word){
@@ -799,13 +801,16 @@ function renderCorrectionPicker(){
   const {target:date,list:planned}=currentPlan(), master=masterPlanFor(date);
   $('studyDate').value=date;
   const picker=$('correctionDatePicker');
-  picker.innerHTML=correctionDates().map(day=>`<option value="${day}">${dateLabel(day)}${data.records.some(r=>r.date===day&&!r.seed)?'（已批改，可修改）':'（可补批改）'}</option>`).join('');
+  const previewOnly=date>realToday();
+  picker.innerHTML=correctionDates().map(day=>`<option value="${day}">${dateLabel(day)}${day>realToday()?'（明天待默写，仅查看）':(data.records.some(r=>r.date===day&&!r.seed)?'（已批改，可修改）':'（可补批改）')}</option>`).join('');
   picker.value=date;
   const list=sortCorrectionItems(planned.length?planned:(master?.words||[]).map(x=>({...x,tag:'当天新词'})));
   const selected=new Set(parseEntries($('errorWords').value).map(x=>x.word));
   $('correctionDate').textContent=date;
-  const counts=allErrorCounts(),metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{const detail=itemFor(x.word,metas),count=counts[norm(x.word)]||0,last=latestErrorDate(x.word);return `<label class="correction-choice"><input type="checkbox" value="${escapeHtml(x.word)}" ${selected.has(norm(x.word))?'checked':''}><span>${i+1}. <b>${highlightEnglish(x.word)}</b> <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><small>${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small>${escapeHtml(x.tag||'')}｜历史错误 ${count} 次${last?`｜最近 ${last}`:''}</small></span></label>`}).join(''):'<p>这一天暂时没有可供批改的默写词。</p>';
-  document.querySelectorAll('#correctionWords input').forEach(input=>input.onchange=syncCheckedErrors);
+  const counts=allErrorCounts(),metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{const detail=itemFor(x.word,metas),count=counts[norm(x.word)]||0,last=latestErrorDate(x.word);return `<label class="correction-choice ${previewOnly?'preview-only':''}"><input type="checkbox" value="${escapeHtml(x.word)}" ${selected.has(norm(x.word))?'checked':''} ${previewOnly?'disabled':''}><span>${i+1}. <b>${highlightEnglish(x.word)}</b> <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><small>${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small>${escapeHtml(x.tag||'')}｜历史错误 ${count} 次${last?`｜最近 ${last}`:''}</small></span></label>`}).join(''):'<p>这一天暂时没有可供批改的默写词。</p>';
+  const saveButton=$('saveAndPlan');saveButton.disabled=previewOnly;
+  if(previewOnly){$('lateCorrectionHint').textContent='正在查看系统生成的明天默写词：仅供预习、朗读和复制，明天默写后再回来批改。';}
+  document.querySelectorAll('#correctionWords input:not(:disabled)').forEach(input=>input.onchange=syncCheckedErrors);
 }
 function renderCorrectionQr(){
   const box=$('qrAccess');if(!box)return;
