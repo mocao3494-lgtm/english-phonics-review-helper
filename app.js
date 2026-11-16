@@ -4,12 +4,15 @@ const today=new Date();
 const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
 const plus=(date,days)=>{const d=new Date(date+'T12:00:00');d.setDate(d.getDate()+days);return iso(d)};
 const norm=s=>s.trim().toLowerCase().replace(/\s+/g,' ');
+const CORRUPT_BACKUP_KEY=KEY+'-corrupt-backup';
 function loadStoredData(){
   const raw=localStorage.getItem(KEY)||localStorage.getItem(LEGACY_KEY)||'';
   const parsed=parseStoredData(raw);
   if(parsed.corrupted){
-    try{localStorage.setItem(KEY+'-corrupt-'+Date.now(),raw);}catch{}
-    parsed.data.recoveryWarning='检测到本机学习数据损坏，已保留原始副本并以空白记录启动。请尽快导出当前数据或从备份恢复。';
+    try{localStorage.setItem(CORRUPT_BACKUP_KEY,raw);localStorage.setItem(CORRUPT_BACKUP_KEY+'-at',new Date().toISOString());}catch{}
+    parsed.data.recoveryWarning='检测到本机学习数据损坏，已保留最近一份原始副本并以空白记录启动。请尽快下载副本或从备份恢复。';
+  }else if(parsed.repaired){
+    parsed.data.recoveryWarning='检测到部分本机数据字段异常，已自动修复为安全默认值。建议尽快导出备份。';
   }
   return parsed.data;
 }
@@ -165,7 +168,18 @@ const WEEK=['星期','星期一','星期二','星期三','星四','星期五','�
 const CLOUD_SYNC={url:'https://hafdtxwbnzoezxsqyaqn.supabase.co',key:'sb_publishable_7aDPR81-sJG4-SKtqj888w_C1N2TnYB',table:'learning_sync',sessionKey:'phonics-cloud-session-v1'};
 let cloudSession=null,cloudReady=false,cloudRecoveryMode=false;
 function syncTimeText(value){if(!value)return '尚未同步';const date=new Date(value);return Number.isNaN(date.getTime())?'尚未同步':date.toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});}
-function updateSyncNotice(){const notice=$('dataNotice');if(!notice)return;const warning=data.recoveryWarning?' '+data.recoveryWarning:'';if(cloudSession&&cloudUserId()){notice.textContent='☁ 云端同步已开启：每次保存会自动上传。最近同步：'+syncTimeText(data.cloudLastSyncAt||data.cloudUpdatedAt)+'。'+warning;notice.classList.add('cloud-notice');}else{notice.textContent='数据目前仅保存在本机浏览器；登录云端同步后，保存会自动上传。'+warning;notice.classList.remove('cloud-notice');}}
+function renderRecoveryActions(){
+  const existing=$('recoveryActions');if(existing)existing.remove();
+  if(!data.recoveryWarning)return;
+  const notice=$('dataNotice');if(!notice)return;
+  const box=document.createElement('div');box.id='recoveryActions';box.className='actions';
+  const raw=localStorage.getItem(CORRUPT_BACKUP_KEY);
+  box.innerHTML=`${raw?'<button type="button" class="secondary compact" id="downloadCorruptBackup">下载损坏数据副本</button>':''}<button type="button" class="secondary compact" id="clearRecoveryNotice">关闭此提示</button>`;
+  notice.insertAdjacentElement('afterend',box);
+  if(raw)$('downloadCorruptBackup').onclick=()=>{const blob=new Blob([raw],{type:'application/json'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='英语拼读_损坏数据副本.json';link.click();URL.revokeObjectURL(link.href);};
+  $('clearRecoveryNotice').onclick=()=>{delete data.recoveryWarning;localStorage.removeItem(CORRUPT_BACKUP_KEY);localStorage.removeItem(CORRUPT_BACKUP_KEY+'-at');save();updateSyncNotice();};
+}
+function updateSyncNotice(){const notice=$('dataNotice');if(!notice)return;const warning=data.recoveryWarning?' '+data.recoveryWarning:'';if(cloudSession&&cloudUserId()){notice.textContent='☁ 云端同步已开启：每次保存会自动上传。最近同步：'+syncTimeText(data.cloudLastSyncAt||data.cloudUpdatedAt)+'。'+warning;notice.classList.add('cloud-notice');}else{notice.textContent='数据目前仅保存在本机浏览器；登录云端同步后，保存会自动上传。'+warning;notice.classList.remove('cloud-notice');}renderRecoveryActions();}
 function cloudStatus(text,tone=''){const el=$('cloudStatus');if(el){el.textContent=text;el.className='cloud-status '+tone;}updateSyncNotice();}
 function decodeJwt(token){try{return JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))));}catch{return null;}}
 function readCloudSession(){const hash=new URLSearchParams(location.hash.slice(1));cloudRecoveryMode=hash.get('type')==='recovery';const token=hash.get('access_token'),refresh=hash.get('refresh_token');if(token){const session={access_token:token,refresh_token:refresh||'',user:decodeJwt(token),savedAt:Date.now()};localStorage.setItem(CLOUD_SYNC.sessionKey,JSON.stringify(session));history.replaceState(null,'',location.pathname+location.search);return session;}try{return JSON.parse(localStorage.getItem(CLOUD_SYNC.sessionKey)||'null');}catch{return null;}}
