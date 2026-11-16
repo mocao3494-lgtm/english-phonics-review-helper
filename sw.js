@@ -1,4 +1,4 @@
-const CACHE='phonics-helper-v4';
+const CACHE='phonics-helper-v5';
 const APP_SHELL=[
   './',
   './index.html',
@@ -10,6 +10,7 @@ const APP_SHELL=[
   './master-plan-20261115-35.js',
   './learned-vocabulary.js',
   './planner.js',
+  './storage.js',
   './app.js'
 ];
 
