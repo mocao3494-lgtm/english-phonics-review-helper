@@ -835,14 +835,14 @@ async function enrichCustomEntry(entry){
   const base=itemFor(entry.word,allMetas());
   let gloss=entry.gloss||(!base.gloss.startsWith('请按')?base.gloss:''),ipa=entry.ipa||(!base.ipa.startsWith('请按')?base.ipa:''),pos=base.pos||'';
   const jobs=[];
-  if(!ipa||!pos)jobs.push(fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(entry.word)}`).then(r=>r.ok?r.json():null).then(v=>{const x=Array.isArray(v)?v[0]:null;if(x){ipa=ipa||x.phonetic||x.phonetics?.find(p=>p.text)?.text||'';pos=pos||x.meanings?.[0]?.partOfSpeech||'';}}).catch(()=>{}));
-  if(!gloss)jobs.push(fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(entry.word)}`).then(r=>r.ok?r.json():null).then(v=>{gloss=v?.[0]?.[0]?.[0]||''}).catch(()=>{}));
+  if(!ipa||!pos)jobs.push(fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(entry.word)}`,{signal:AbortSignal.timeout(5000)}).then(r=>r.ok?r.json():null).then(v=>{const x=Array.isArray(v)?v[0]:null;if(x){ipa=ipa||x.phonetic||x.phonetics?.find(p=>p.text)?.text||'';pos=pos||x.meanings?.[0]?.partOfSpeech||'';}}).catch(()=>{}));
+  if(!gloss)jobs.push(fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(entry.word)}`,{signal:AbortSignal.timeout(5000)}).then(r=>r.ok?r.json():null).then(v=>{gloss=v?.[0]?.[0]?.[0]||''}).catch(()=>{}));
   await Promise.all(jobs);
   return {word:norm(entry.word),gloss:gloss||'请按教材核对中文',ipa:ipa||'请按材核对音标',pos,addedDate:$('studyDate').value||iso(today)};
 }
 async function addCustomWords(){
   const entries=parseEntries($('customWords').value);if(!entries.length){alert('请先输入至少一个英文单词。');return;}
-  const button=$('addCustomWords');button.disabled=true;button.textContent='正查询音标和中文…';
+  const button=$('addCustomWords');button.disabled=true;button.textContent='正在加入…';$('customStatus').textContent='正在添加单词并查询中文、音标（最多等待 5 秒）…';
   try{
     for(const entry of entries){
       const enriched=await enrichCustomEntry(entry), old=data.customWords.find(x=>norm(x.word)===enriched.word);
