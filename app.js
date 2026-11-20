@@ -18,6 +18,16 @@ function loadStoredData(){
 }
 let data=loadStoredData();
 data.customWords=Array.isArray(data.customWords)?data.customWords:[];
+const CUSTOM_DATE_FIX_VERSION='2026-11-20-remove-misdated-material-words';
+if(data.customDateFixVersion!==CUSTOM_DATE_FIX_VERSION){
+  const mistaken=new Set(['wood','fabric','paper','plastic','metal']);
+  data.customWords=data.customWords.filter(x=>!(x?.addedDate==='2026-11-19'&&mistaken.has(norm(x.word||''))));
+  if(Array.isArray(data.curriculumPlan))data.curriculumPlan=data.curriculumPlan.map(day=>day?.date==='2026-11-19'?{...day,words:(day.words||[]).filter(x=>!mistaken.has(norm(typeof x==='string'?x:x.word||'')))}:day).filter(day=>(day.words||[]).length);
+  data.printedPlans=data.printedPlans&&typeof data.printedPlans==='object'?data.printedPlans:{};
+  delete data.printedPlans['2026-11-20'];
+  data.customDateFixVersion=CUSTOM_DATE_FIX_VERSION;
+  localStorage.setItem(KEY,JSON.stringify(data));
+}
 const query=new URLSearchParams(location.search);
 const reviewMode=query.get('mark')==='1';
 // 平时打开页面远使用当天；只有打印作业的二码才固定到历史日期。
@@ -892,7 +902,7 @@ function fill(){
   $('childName').value=data.profile.childName||'';
   seedKnownErrors();
   // 普通口始终使用设备当天；只有二维的 mark=1 才允许打开历史日期。
-  const now=reviewMode&&queryDate?queryDate:(selectedDate||realToday()); selectedDate=now; $('studyDate').value=now;
+  const now=reviewMode&&queryDate?queryDate:(selectedDate||realToday()); selectedDate=now; $('studyDate').value=now;const customDate=$('customWordsDate');if(customDate&&!customDate.value)customDate.value=plus(now,1);
   const existing=data.records.find(r=>r.date===now);
   if(existing){$('errorWords').value=formatItems(existing.errorItems?.length?existing.errorItems:existing.errors);$('khanDone').value=existing.khan||'';}
   else {const draft=(()=>{try{return JSON.parse(sessionStorage.getItem(DRAFT_KEY)||'null')}catch{return null}})();$('errorWords').value=draft?.date===now?draft.errors||'':'';$('khanDone').value=draft?.date===now?draft.khan||'':'';}
