@@ -18,7 +18,7 @@ function loadStoredData(){
 }
 let data=loadStoredData();
 data.customWords=Array.isArray(data.customWords)?data.customWords:[];
-const CUSTOM_DATE_FIX_VERSION='2026-11-20-material-words-correct-date-v2';
+const CUSTOM_DATE_FIX_VERSION='2026-11-20-material-words-correct-date-v3';
 if(data.customDateFixVersion!==CUSTOM_DATE_FIX_VERSION){
   const mistaken=new Set(['wood','fabric','paper','plastic','metal']);
   data.customWords=data.customWords.filter(x=>!(x?.addedDate==='2026-11-19'&&mistaken.has(norm(x.word||'')))).map(x=>mistaken.has(norm(x?.word||''))&&x?.addedDate==='2026-11-21'?{...x,addedDate:'2026-11-20'}:x);
@@ -339,8 +339,19 @@ function parseLines(text){return parseEntries(text).map(x=>x.word)}
 function entryWords(record){return [...new Set([...(record.reviewedWords||[]),...(record.newWords||[]),...(record.errors||[])])];}
 function allMetas(){return [...(data.customWords||[]),...data.records.flatMap(r=>[...(r.newItems||[]),...(r.errorItems||[]),...(r.nextNewItems||[])])];}
 function customPendingWords(targetDate){
-  const appeared=new Set(data.records.flatMap(r=>[...entryWords(r),...(r.nextPlan||[]).map(x=>typeof x==='string'?x:x.word)]).map(norm));
-  return (data.customWords||[]).filter(x=>(x.addedDate||'')<=targetDate&&!appeared.has(norm(x.word)));
+  // “已生成的下一次预览”不算孩子已经默写；否则把家长新增词改到当天后，
+  // 它会被旧预览错误过滤掉。只在新增日期之后实际进入过批改记录，才不再作为首次必默词。
+  return (data.customWords||[]).filter(item=>{
+    const word=norm(item?.word||''),addedDate=item?.addedDate||'';
+    if(!word||!addedDate||addedDate>targetDate)return false;
+    return !data.records.some(record=>{
+      if(record.date<addedDate)return false;
+      const actual=Array.isArray(record.reviewedWords)&&record.reviewedWords.length
+        ?record.reviewedWords
+        :(record.dictationItems||[]).map(x=>typeof x==='string'?x:x.word).filter(Boolean);
+      return actual.map(norm).includes(word);
+    });
+  });
 }
 function allErrorCounts(){
   const c={};data.records.forEach(r=>(r.errors||[]).forEach(w=>c[norm(w)]=(c[norm(w)]||0)+1));
