@@ -18,10 +18,10 @@ function loadStoredData(){
 }
 let data=loadStoredData();
 data.customWords=Array.isArray(data.customWords)?data.customWords:[];
-const CUSTOM_DATE_FIX_VERSION='2026-11-20-material-words-correct-date-v3';
+const CUSTOM_DATE_FIX_VERSION='2026-11-20-material-words-correct-date-v4';
 if(data.customDateFixVersion!==CUSTOM_DATE_FIX_VERSION){
   const mistaken=new Set(['wood','fabric','paper','plastic','metal']);
-  data.customWords=data.customWords.filter(x=>!(x?.addedDate==='2026-11-19'&&mistaken.has(norm(x.word||'')))).map(x=>mistaken.has(norm(x?.word||''))&&x?.addedDate==='2026-11-21'?{...x,addedDate:'2026-11-20'}:x);
+  data.customWords=data.customWords.filter(x=>!(x?.addedDate==='2026-11-19'&&mistaken.has(norm(x.word||'')))).map(x=>mistaken.has(norm(x?.word||''))?{...x,addedDate:'2026-11-20'}:x);
   if(Array.isArray(data.curriculumPlan))data.curriculumPlan=data.curriculumPlan.map(day=>day?.date==='2026-11-19'?{...day,words:(day.words||[]).filter(x=>!mistaken.has(norm(typeof x==='string'?x:x.word||'')))}:day).filter(day=>(day.words||[]).length);
   data.printedPlans=data.printedPlans&&typeof data.printedPlans==='object'?data.printedPlans:{};
   delete data.printedPlans['2026-11-20'];
@@ -399,9 +399,14 @@ const HISTORICAL_DICTATION_ITEMS={
 };
 const cloneItems=items=>(items||[]).map(x=>typeof x==='string'?{word:x}:{...x});
 function mergeDailyNewWords(date, items){
+  // 明确指定在当天的家长新增词始终先合并：无论旧清单或旧预览如何，
+  // 都不能把“加入到 20 号”悄悄改成下一天或从当前清单中遗漏。
+  const customForDate=(data.customWords||[]).filter(item=>(item.addedDate||'')===date);
+  const olderPending=customPendingWords(date).filter(item=>(item.addedDate||'')<date);
   const required=[
     ...scheduledWords(date).map(word=>({word,tag:'今日新词·必默'})),
-    ...customPendingWords(date).map(item=>({word:item.word,tag:'家长新增·必默'}))
+    ...customForDate.map(item=>({word:item.word,tag:'家长新增·必默'})),
+    ...olderPending.map(item=>({word:item.word,tag:'家长新增·必默'}))
   ];
   const merged=[],seen=new Set();
   [...required,...cloneItems(items)].forEach(item=>{
