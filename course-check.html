@@ -9,7 +9,7 @@
   <title>英语拼读复习助手</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./upgrade.css?v=20261112-2" />
-  <link rel="stylesheet" href="./ui-20261115-37.css?v=20261120-50" />
+  <link rel="stylesheet" href="./ui-20261115-37.css?v=20261120-51" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
@@ -88,7 +88,7 @@
         <label>临时新增默写词 <small>每行一个英文；也可写“英文 | 中文 | 音标”。</small>
           <textarea id="customWords" rows="3" placeholder="例如：engine&#10;helmet | 头盔 | /ˈhelmɪt/"></textarea>
         </label>
-        <button type="button" class="secondary" id="addCustomWords">加入并自动补全</button><p class="help" id="customStatus"></p>
+        <label>加入到哪天的默写 <input id="customWordsDate" type="date" /></label><button type="button" class="secondary" id="addCustomWords">加入并自动补全</button><p class="help" id="customStatus"></p><div id="customWordsManager" class="custom-words-manager"></div>
         <label>记录当天可汗主题（可不填）
           <select id="khanDone">
           <option value="">今天未做或暂不记录</option>
@@ -188,7 +188,7 @@
   <script src="./master-plan-20261115-35.js"></script>
   <script src="./learned-vocabulary.js?v=20261112-1"></script>
   
-<script src="./app-20261115-37.js?v=20261120-50"></script>
+<script src="./app-20261115-37.js?v=20261120-51"></script>
 </body>
 </html>
 
