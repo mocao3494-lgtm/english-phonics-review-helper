@@ -18,10 +18,10 @@ function loadStoredData(){
 }
 let data=loadStoredData();
 data.customWords=Array.isArray(data.customWords)?data.customWords:[];
-const CUSTOM_DATE_FIX_VERSION='2026-11-20-remove-misdated-material-words';
+const CUSTOM_DATE_FIX_VERSION='2026-11-20-material-words-correct-date-v2';
 if(data.customDateFixVersion!==CUSTOM_DATE_FIX_VERSION){
   const mistaken=new Set(['wood','fabric','paper','plastic','metal']);
-  data.customWords=data.customWords.filter(x=>!(x?.addedDate==='2026-11-19'&&mistaken.has(norm(x.word||''))));
+  data.customWords=data.customWords.filter(x=>!(x?.addedDate==='2026-11-19'&&mistaken.has(norm(x.word||'')))).map(x=>mistaken.has(norm(x?.word||''))&&x?.addedDate==='2026-11-21'?{...x,addedDate:'2026-11-20'}:x);
   if(Array.isArray(data.curriculumPlan))data.curriculumPlan=data.curriculumPlan.map(day=>day?.date==='2026-11-19'?{...day,words:(day.words||[]).filter(x=>!mistaken.has(norm(typeof x==='string'?x:x.word||'')))}:day).filter(day=>(day.words||[]).length);
   data.printedPlans=data.printedPlans&&typeof data.printedPlans==='object'?data.printedPlans:{};
   delete data.printedPlans['2026-11-20'];
@@ -580,13 +580,17 @@ function nextPlan(){
   const {target:currentDate}=currentPlan();
   return nextPlanState({currentDate,records:data.records,planForDate});
 }
-function invalidateUncorrectedFuturePlans(fromDate){
-  // 补录漏掉的日期后，尚未批改的未来预览必须作废并按新错词重新生成；
-  // 已保存的后续批改记录则保留，避免改写孩子已经完成的默写历史。
+function invalidateUncorrectedPlansFrom(fromDate){
+  // 课程或家长新增词变动时，当天及之后仍未批改的清单必须立即重算。
+  // 已保存的批改记录不动，避免改写已完成的默写历史。
   const completed=new Set(data.records.filter(r=>!r.seed).map(r=>r.date));
   Object.keys(data.printedPlans||{}).forEach(date=>{
-    if(date>fromDate&&!completed.has(date))delete data.printedPlans[date];
+    if(date>=fromDate&&!completed.has(date))delete data.printedPlans[date];
   });
+}
+function invalidateUncorrectedFuturePlans(fromDate){
+  // 补批改只影响下一天及其后的尚未批改预览。
+  invalidateUncorrectedPlansFrom(plus(fromDate,1));
 }
 function planForDate(date){
   const frozen=storedPlanFor(date);
@@ -854,12 +858,17 @@ async function addCustomWords(){
   const entries=parseEntries($('customWords').value);if(!entries.length){alert('请先输入至少一个英文单词。');return;}
   const button=$('addCustomWords'),effectiveDate=$('customWordsDate')?.value||plus($('studyDate').value||realToday(),1);button.disabled=true;button.textContent='正在加入…';$('customStatus').textContent='正在添加到 '+effectiveDate+'，并查询中文、音标（最多等待 5 秒）…';
   try{
+    let affectedFrom=effectiveDate;
     for(const entry of entries){
       const enriched=await enrichCustomEntry(entry,effectiveDate), old=data.customWords.find(x=>norm(x.word)===enriched.word);
-      if(old){Object.assign(old,{...enriched,addedDate:effectiveDate||old.addedDate||enriched.addedDate});}
-      else data.customWords.push(enriched);
+      if(old){
+        if(old.addedDate&&old.addedDate<affectedFrom)affectedFrom=old.addedDate;
+        Object.assign(old,{...enriched,addedDate:effectiveDate||old.addedDate||enriched.addedDate});
+      }else data.customWords.push(enriched);
     }
-    save();$('customWords').value='';$('customStatus').textContent=`已加入 ${entries.length} 个词；它们会从下一次默写开始自动进入复习曲线。`;render();
+    // 包括所选当天：此前已生成但尚未批改的清单也要立刻加入新词。
+    invalidateUncorrectedPlansFrom(affectedFrom);
+    save();$('customWords').value='';$('customStatus').textContent=`已加入 ${entries.length} 个词，并已刷新 ${effectiveDate} 起尚未批改的默写清单。`;render();
   }finally{button.disabled=false;button.textContent='加入并自动补全';}
 }
 function renderCustomWordsManager(){
@@ -868,7 +877,8 @@ function renderCustomWordsManager(){
 }
 function saveCustomWordDate(index){
   const word=data.customWords?.[index],date=$('[data-custom-date="'+index+'"]')?.value;if(!word||!date)return;
-  word.addedDate=date;invalidateUncorrectedFuturePlans(realToday());save();fill();showSaveToast('已更新新增词的默写日期。');
+  const affectedFrom=word.addedDate&&word.addedDate<date?word.addedDate:date;
+  word.addedDate=date;invalidateUncorrectedPlansFrom(affectedFrom);save();fill();showSaveToast('已更新新增词日期，并刷新受影响的未批改清单。');
 }
 function publicPageUrl(date,items=[]){
   const packed=(items||[]).map(x=>norm(typeof x==='string'?x:x.word)).filter(Boolean).join('|');
@@ -920,7 +930,7 @@ $('correctionDatePicker').onchange=()=>{if(reviewMode){$('correctionDatePicker')
 $('correctionSort').onchange=()=>renderCorrectionPicker();
 $('returnToday').onclick=()=>{if(reviewMode)return;selectedDate=realToday();fill();};
 $('errorWords').onchange=()=>{saveDraft();renderCorrectionPicker();};$('khanDone').onchange=saveDraft;
-$('addCustomWords').onclick=addCustomWords;$('quickImportPlan').onclick=()=>$('importPlan').click();document.addEventListener('click',e=>{const del=e.target.closest('[data-custom-delete]');if(del){const i=+del.dataset.customDelete;if(confirm('确定删除这个家长新增词吗？')){data.customWords.splice(i,1);invalidateUncorrectedFuturePlans(realToday());save();fill();}}});document.addEventListener('change',e=>{if(e.target.matches('[data-custom-date]'))saveCustomWordDate(+e.target.dataset.customDate);});document.addEventListener('click',e=>{const saveBtn=e.target.closest('[data-course-save]'),deleteBtn=e.target.closest('[data-course-delete]');if(saveBtn)applyCourseEdit(+saveBtn.dataset.courseSave);if(deleteBtn){const i=+deleteBtn.dataset.courseDelete;if(confirm('确定删除这一天家长新增的课程吗？')){data.curriculumPlan.splice(i,1);invalidateUncorrectedFuturePlans(realToday());save();fill();showSaveToast('已删除该日期的新增课程。');}}});
+$('addCustomWords').onclick=addCustomWords;$('quickImportPlan').onclick=()=>$('importPlan').click();document.addEventListener('click',e=>{const del=e.target.closest('[data-custom-delete]');if(del){const i=+del.dataset.customDelete;if(confirm('确定删除这个家长新增词吗？')){const affectedFrom=data.customWords[i]?.addedDate||realToday();data.customWords.splice(i,1);invalidateUncorrectedPlansFrom(affectedFrom);save();fill();}}});document.addEventListener('change',e=>{if(e.target.matches('[data-custom-date]'))saveCustomWordDate(+e.target.dataset.customDate);});document.addEventListener('click',e=>{const saveBtn=e.target.closest('[data-course-save]'),deleteBtn=e.target.closest('[data-course-delete]');if(saveBtn)applyCourseEdit(+saveBtn.dataset.courseSave);if(deleteBtn){const i=+deleteBtn.dataset.courseDelete;if(confirm('确定删除这一天家长新增的课程吗？')){data.curriculumPlan.splice(i,1);invalidateUncorrectedFuturePlans(realToday());save();fill();showSaveToast('已删除该日期的新增课程。');}}});
 $('childName').onchange=()=>{data.profile={...(data.profile||{}),childName:$('childName').value.trim()};save();};$('ruleExceptions').onchange=()=>{data.ruleExceptions=parseLines($('ruleExceptions').value);save();render();};document.addEventListener('click',e=>{const button=e.target.closest('[data-speak]');if(button)speakWord(button.dataset.speak);});
 $('copyPasteWords').onclick=copyPasteWords;$('copyNextPasteWords').onclick=copyNextPasteWords;
 $('selectAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=true);syncCheckedErrors();};
