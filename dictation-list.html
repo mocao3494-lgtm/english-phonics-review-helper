@@ -9,7 +9,7 @@
   <title>英语拼读复习助手</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./upgrade.css?v=20261112-2" />
-  <link rel="stylesheet" href="./ui-20261115-37.css?v=20261116-45" />
+  <link rel="stylesheet" href="./ui-20261115-37.css?v=20261120-49" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
@@ -28,6 +28,7 @@
       <div><b>➕ 后续课程单词</b><p>新增课程后，点击上传即可加入后续学习安排；不会影响已经批改的历史记录。</p></div>
       <div class="actions"><button type="button" class="secondary" id="quickImportPlan">上传课程计划</button></div>
       <details><summary>文件怎么写？</summary><p>最简单：新建一个 TXT 文件，每行写一天，例如：<br><code>2026-11-26 | apple, pear, banana, orange, grape</code><br>也支持原来的 JSON 课程计划文件。</p></details>
+      <div id="coursePlanManager" class="course-plan-manager"></div>
     </section>
 
     <section class="pending-correction" id="pendingCorrection" hidden><span id="pendingCorrectionText"></span><button type="button" class="secondary compact" id="openPendingCorrection">去补批改</button></section>
@@ -187,7 +188,7 @@
   <script src="./master-plan-20261115-35.js"></script>
   <script src="./learned-vocabulary.js?v=20261112-1"></script>
   
-<script src="./app-20261115-37.js?v=20261116-45"></script>
+<script src="./app-20261115-37.js?v=20261120-49"></script>
 <script id="quickCourseInline">
 (()=>{const input=document.getElementById('importPlan'),button=document.getElementById('quickImportPlan');if(!input||!button)return;button.onclick=()=>input.click();input.accept='application/json,.json,text/plain,.txt';input.onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const text=String(reader.result||'').trim();let plans;if(text.startsWith('[')||text.startsWith('{')){const raw=JSON.parse(text);plans=Array.isArray(raw)?raw:raw.days;}else{plans=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map(line=>{const a=line.split(/[|｜]/);if(a.length<2)throw Error('TXT 每行需写：日期 | 单词1, 单词2');const date=a.shift().trim(),words=a.join('|').split(/[，,、]/).map(x=>x.trim()).filter(Boolean).map(word=>({word}));return {date,words,focus:'请按课程内容学习'};});}const seen=new Set();if(!Array.isArray(plans)||!plans.length||plans.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')||!Array.isArray(x.words)||!x.words.length||seen.has(x.date)||(seen.add(x.date),false)))throw Error('日期不能重复，且每一天至少有一个单词');data.curriculumPlan=plans;save();fill();alert('已导入 '+plans.length+' 天课程计划。');}catch(err){alert('课程计划导入失败：'+(err.message||'格式不正确'));}finally{e.target.value='';}};reader.readAsText(file);};})();</script>\n</body>
 </html>
