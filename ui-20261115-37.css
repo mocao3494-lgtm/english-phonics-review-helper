@@ -99,3 +99,13 @@
   .letter-chip.space-chip{min-width:57px;font-size:.9rem}
   .letter-all{margin-left:0;width:100%;font-size:1.05rem}
 }
+
+/* 2026-11-21：家长复盘、课程上传预览与自动备份 */
+.parent-week-summary,.course-import-preview{padding:17px;border:1px solid #a8d8ca;border-radius:14px;background:#f7fffb}
+.parent-week-summary h3,.course-import-preview h3{margin:0 0 8px;color:#145a4c;font-size:1.22rem}
+.parent-week-summary p,.course-import-preview p{line-height:1.7;margin:8px 0}
+.backup-list{display:grid;gap:9px}
+.backup-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border:1px solid #c8e1d8;border-radius:12px;background:#fbfffd}
+.backup-row span{display:grid;gap:3px}.backup-row small{color:#52746b}
+.course-import-preview .actions{margin-top:14px}
+@media(max-width:640px){.backup-row{align-items:stretch;flex-direction:column}.backup-row button{width:100%}.parent-week-summary,.course-import-preview{padding:14px}}
