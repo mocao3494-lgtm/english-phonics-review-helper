@@ -9,7 +9,7 @@
   <title>英语拼读复习助手</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./upgrade.css?v=20261112-2" />
-  <link rel="stylesheet" href="./ui-20261115-37.css?v=20261121-74" />
+  <link rel="stylesheet" href="./ui-20261115-37.css?v=20261121-75" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
 </head>
 <body>
@@ -69,12 +69,12 @@
       </details>
       <div class="correction-box" id="correctionBox">
         <h3>② 批改默写：可补批改之前日期</h3>
-        <p class="help">选择需要批改的日期；只勾选写错的词。“会了／不熟／错了”由系统根据历次批改自动分析；保存后会重新生成之后尚未批改的复习清单。</p>
+        <p class="help">选择需要批改的日期；请点孩子写错、漏写或顺序错误的字母（短语空格也能点）。全对不用点；整词不会可点“整词不会”。系统会据此自动生成错词复习和错误分析。</p>
         <div class="correction-controls">
           <label>默写日期 <select id="correctionDatePicker"></select></label>
           <label>排列方式 <select id="correctionSort"><option value="original">本次默写顺序</option><option value="errors">错误次数从多到少</option><option value="recent">最近加入错题优先</option></select></label>
         </div>
-        <p class="help">当前批改：<b id="correctionDate"></b>。只需勾选写错的词，状态会由系统自动更新。</p>
+        <p class="help">当前批改：<b id="correctionDate"></b>。逐个点错字母即可；系统会自动判定整词错误并更新状态。</p>
         <div id="correctionWords" class="correction-words"></div>
         <div class="actions"><button type="button" class="secondary" id="selectAllErrors">全部勾选</button><button type="button" class="secondary" id="clearAllErrors">全部取消</button></div>
       </div>
@@ -193,7 +193,7 @@
   <script src="./mastery-baseline.js?v=20261121-72"></script>
   <script src="./planner.js?v=20261120-56"></script>
 <script src="./storage.js?v=20261120-56"></script>
-<script src="./app.js?v=20261121-74"></script>
+<script src="./app.js?v=20261121-75"></script>
 </body>
 </html>
 
