@@ -407,14 +407,18 @@ function baseDictationItems(date,items){
   // 课程当天固定新词优先占据基础名额；家长新增词单独追加，绝不挤占这 40 个。
   const customWords=new Set((data.customWords||[]).filter(item=>(item.addedDate||'')<=date).map(item=>norm(item.word||'')));
   const base=[],seen=new Set();
+  const push=item=>{
+    const word=norm(item?.word||item);
+    if(!word||seen.has(word)||customWords.has(word)||base.length>=40)return;
+    seen.add(word);base.push(typeof item==='string'?{word}:{...item,word});
+  };
+  // 固定课程词不能因旧缓存排序而被推迟。
   scheduledWords(date).forEach(word=>{
     if(!seen.has(word)&&base.length<40){seen.add(word);base.push({word,tag:'今日新词·必默'});}
   });
-  cloneItems(items).forEach(item=>{
-    const word=norm(item?.word||item);
-    if(!word||seen.has(word)||customWords.has(word)||base.length>=40)return;
-    seen.add(word);base.push({...item,word});
-  });
+  // 优先保留原有默写顺序；若清理后不足 40，则从正常记忆曲线补足。
+  cloneItems(items).forEach(push);
+  if(base.length<40)buildPlan(date).list.forEach(push);
   return base;
 }
 const PLAN_CACHE_CLEAN_VERSION='2026-11-21-prune-ungraded-oversize-plans-v1';
