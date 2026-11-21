@@ -245,7 +245,7 @@ function renderRecoveryActions(){
   if(raw)$('downloadCorruptBackup').onclick=()=>{const blob=new Blob([raw],{type:'application/json'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='英语拼读_损坏数据副本.json';link.click();URL.revokeObjectURL(link.href);};
   $('clearRecoveryNotice').onclick=()=>{delete data.recoveryWarning;localStorage.removeItem(CORRUPT_BACKUP_KEY);localStorage.removeItem(CORRUPT_BACKUP_KEY+'-at');save();updateSyncNotice();};
 }
-function updateSyncNotice(){const notice=$('dataNotice');if(!notice)return;const warning=data.recoveryWarning?' '+data.recoveryWarning:'';if(cloudSession&&cloudUserId()){notice.textContent='☁ 云端同步已开启：每次保存会自动上传。最近同步：'+syncTimeText(data.cloudLastSyncAt||data.cloudUpdatedAt)+'。'+warning;notice.classList.add('cloud-notice');}else{notice.textContent='数据目前仅保存在本机浏览器；登录云端同步后，保存会自动上传。'+warning;notice.classList.remove('cloud-notice');}renderRecoveryActions();}
+function updateSyncNotice(){const notice=$('dataNotice');if(!notice)return;const warning=data.recoveryWarning?' '+data.recoveryWarning:'';if(cloudSession&&cloudUserId()){const pending=data.cloudPending?' 本机已保存，正在等待网络恢复后自动重试。':'';notice.textContent='☁ 云端同步已开启：每次保存会自动上传。最近同步：'+syncTimeText(data.cloudLastSyncAt||data.cloudUpdatedAt)+'。'+pending+warning;notice.classList.add('cloud-notice');}else{notice.textContent='数据目前仅保存在本机浏览器；登录云端同步后，保存会自动上传。'+warning;notice.classList.remove('cloud-notice');}renderRecoveryActions();}
 function cloudStatus(text,tone=''){const el=$('cloudStatus');if(el){el.textContent=text;el.className='cloud-status '+tone;}updateSyncNotice();}
 function decodeJwt(token){try{return JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))));}catch{return null;}}
 function readCloudSession(){const hash=new URLSearchParams(location.hash.slice(1));cloudRecoveryMode=hash.get('type')==='recovery';const token=hash.get('access_token'),refresh=hash.get('refresh_token');if(token){const session={access_token:token,refresh_token:refresh||'',user:decodeJwt(token),savedAt:Date.now()};localStorage.setItem(CLOUD_SYNC.sessionKey,JSON.stringify(session));history.replaceState(null,'',location.pathname+location.search);return session;}try{return JSON.parse(localStorage.getItem(CLOUD_SYNC.sessionKey)||'null');}catch{return null;}}
@@ -345,9 +345,9 @@ async function cloudPush(successMessage='已同步到云端。'){
     data.cloudUpdatedAt=new Date().toISOString();
     localStorage.setItem(KEY,JSON.stringify(data));
     await cloudRequest('/rest/v1/'+CLOUD_SYNC.table,{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:cloudUserId(),payload:data,updated_at:data.cloudUpdatedAt})});
-    data.cloudLastSyncAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(data));
+    data.cloudLastSyncAt=new Date().toISOString();data.cloudPending=false;localStorage.setItem(KEY,JSON.stringify(data));
     cloudStatus(successMessage+' 最近同步：'+syncTimeText(data.cloudLastSyncAt)+'。','ok');
-  }catch(err){cloudStatus('上传失败：'+String(err.message||'未知错误').replace(/\\s+/g,' ').slice(0,180),'warn');console.warn(err);}
+  }catch(err){data.cloudPending=true;localStorage.setItem(KEY,JSON.stringify(data));cloudStatus('上传失败，但本机记录已保存；网络恢复后会自动重试。'+String(err.message||'未知错误').replace(/\\s+/g,' ').slice(0,160),'warn');console.warn(err);}
 }
 async function cloudPull(){
   if(!cloudUserId())return;
@@ -362,6 +362,7 @@ async function cloudPull(){
   }catch(err){cloudStatus('读取失败：'+String(err.message||'未知错误').slice(0,200),'warn');console.warn(err);}
 }
 function queueCloudPush(){if(cloudSession&&cloudUserId())setTimeout(()=>cloudPush(),80);}
+window.addEventListener('online',()=>{if(cloudSession&&cloudUserId()&&data.cloudPending)cloudPush('网络已恢复，已同步到云端。');});
 async function setupCloudSync(){
   mountCloudSync();cloudSession=readCloudSession();renderCloudControls();updateSyncNotice();
   if(cloudSession&&cloudTokenExpired()&&!(await refreshCloudSession())){cloudReady=true;return;}
@@ -369,8 +370,22 @@ async function setupCloudSync(){
   if(cloudSession&&cloudUserId())cloudStatus(data.cloudLastSyncAt?'云端同步已开启。':'已登录：首次请选择“上传本机记录”或“下载云端记录”。','ok');
   cloudReady=true;
 }
-function save(){localStorage.setItem(KEY,JSON.stringify(data));;queueCloudPush();}
-const DRAFT_KEY='phonics-helper-draft-v1';function childName(){return String(data.profile?.childName||'').trim();}function saveDraft(){const {target}=currentPlan();sessionStorage.setItem(DRAFT_KEY,JSON.stringify({date:target,errors:$('errorWords').value,khan:$('khanDone').value}));}function clearDraft(){sessionStorage.removeItem(DRAFT_KEY);}function renderDiagnostics(){const box=$('diagnosticContent');if(!box)return;const plans=allMasterPlans().map(x=>x.date).filter(Boolean).sort(),build=document.documentElement.dataset.build||'未知';box.textContent=`网页版本：${build}｜学习记录：${data.records.length} 天｜课程覆盖至：${plans.at(-1)||'未设置'}｜最近备份：${data.lastBackupAt||'尚未备份'}｜数据只保存在本机浏览。`;}
+const AUTO_BACKUP_KEY=KEY+'-auto-backups-v1';
+function saveAutomaticBackup(){
+  try{
+    const snapshots=JSON.parse(localStorage.getItem(AUTO_BACKUP_KEY)||'[]');
+    snapshots.unshift({at:new Date().toISOString(),payload:JSON.parse(JSON.stringify(data))});
+    localStorage.setItem(AUTO_BACKUP_KEY,JSON.stringify(snapshots.slice(0,5)));
+    data.autoBackupCount=Math.min(snapshots.length,5);
+  }catch(err){console.warn('自动备份未完成',err);}
+}
+function save(){
+  data.localSavedAt=new Date().toISOString();
+  if(cloudSession&&cloudUserId())data.cloudPending=true;
+  saveAutomaticBackup();
+  localStorage.setItem(KEY,JSON.stringify(data));queueCloudPush();
+}
+const DRAFT_KEY='phonics-helper-draft-v1';function childName(){return String(data.profile?.childName||'').trim();}function saveDraft(){const {target}=currentPlan();sessionStorage.setItem(DRAFT_KEY,JSON.stringify({date:target,errors:$('errorWords').value,khan:$('khanDone').value,statuses:correctionStatusMap()}));}function clearDraft(){sessionStorage.removeItem(DRAFT_KEY);}function renderDiagnostics(){const box=$('diagnosticContent');if(!box)return;const plans=allMasterPlans().map(x=>x.date).filter(Boolean).sort(),build=document.documentElement.dataset.build||'未知';box.textContent=`网页版本：${build}｜学习记录：${data.records.length} 天｜课程覆盖至：${plans.at(-1)||'未设置'}｜手动导出：${data.lastBackupAt||'尚未导出'}｜本机自动保留：${data.autoBackupCount||0} 份。`;}
 function learningBaselineCounts(){
   const raw=window.MASTERY_BASELINE||{};
   const count=(level,key,fallback)=>Array.isArray(raw?.[level]?.[key])?new Set(raw[level][key].map(norm).filter(Boolean)).size:fallback;
@@ -651,6 +666,10 @@ function buildPlan(targetDate){
   const urgentWords=new Set(urgent.map(([w])=>norm(w)));
   stableShuffle(historical.filter(([w])=>!urgentWords.has(norm(w))).map(([w])=>w),`历史错题-${targetDate}`).slice(0,12)
     .forEach(w=>add(w,`历史轮换复习`));
+  // 自评“不熟”的词不必等到写错：在接下来两周内优先安排，若勾错仍以上方错词曲线为准。
+  const unfamiliarPool=[...new Set(data.records.filter(r=>r.date<targetDate&&plus(r.date,14)>=targetDate).flatMap(r=>r.unfamiliarWords||[]).map(norm).filter(Boolean))];
+  stableShuffle(unfamiliarPool,`自评不熟-${targetDate}`).slice(0,6)
+    .forEach(w=>add(w,'自评不熟·提前复习'));
   // 学习底账分层：已学未掌握词每天优先抽取少量；标为错误后，上方的错词曲线会优先覆盖它。
   const baseline=masteryBaseline();
   stableShuffle([...baseline.unmastered],`未掌握重点-${targetDate}`).slice(0,8)
@@ -842,14 +861,37 @@ function renderPendingCorrections(){
 function pasteWords(list){
   return [...new Set((list||[]).map(item=>norm(typeof item==='string'?item:item.word)).filter(Boolean))];
 }
+function planComposition(list){
+  const result={newWords:0,errors:0,unfamiliar:0,focus:0,mastered:0,other:0};
+  (list||[]).forEach(item=>{
+    const tag=String(typeof item==='string'?'':item.tag||'');
+    if(/新词|必默/.test(tag))result.newWords++;
+    else if(/错词|历史/.test(tag))result.errors++;
+    else if(/不熟|未掌握/.test(tag))result.unfamiliar++;
+    else if(/已掌握/.test(tag))result.mastered++;
+    else if(/规律/.test(tag))result.focus++;
+    else result.other++;
+  });
+  return result;
+}
+function compositionText(list){
+  const c=planComposition(list),parts=[];
+  if(c.newWords)parts.push('新词 '+c.newWords);
+  if(c.errors)parts.push('错词复习 '+c.errors);
+  if(c.unfamiliar)parts.push('不熟/未掌握 '+c.unfamiliar);
+  if(c.focus)parts.push('规律巩固 '+c.focus);
+  if(c.mastered)parts.push('已掌握抽查 '+c.mastered);
+  if(c.other)parts.push('常态巩固 '+c.other);
+  return parts.length?parts.join('＋'):'等待生成';
+}
 function renderPasteList(){
   const box=$('pasteWordList');if(!box)return;
   const {target,list}=currentPlan(),words=pasteWords(list);
-  box.value=words.join('\n');$('pasteWordCount').textContent=`${dateLabel(target)} · 共 ${words.length} 个词（每行一个，可直接粘贴；与下方本次批改单完全一致）`;
+  box.value=words.join('\n');$('pasteWordCount').textContent=`${dateLabel(target)} · 共 ${words.length} 个词（${compositionText(list)}；每行一个，可直接粘贴；与下方本次批改单完全一致）`;
   const nextBox=$('nextPasteWordList');if(!nextBox)return;
   const next=nextPlan(),nextWords=next.awaitingCorrection?[]:pasteWords(next.list);
   nextBox.value=nextWords.join('\n');
-  $('nextPasteWordCount').textContent=next.awaitingCorrection?'请先保存当天的批改结果；系统会依据错词和记忆曲线生成下一次清单。':`${dateLabel(next.target)} · 共 ${nextWords.length} 个词（每行一个，可直接粘贴）`;
+  $('nextPasteWordCount').textContent=next.awaitingCorrection?'请先保存当天的批改结果；系统会依据错词和记忆曲线生成下一次清单。':`${dateLabel(next.target)} · 共 ${nextWords.length} 个词（${compositionText(next.list)}；每行一个，可直接粘贴）`;
   $('nextPasteBadge').textContent=next.awaitingCorrection?'待当天批改':'已生成';
 }
 async function copyTextFrom(boxId,emptyMessage,successMessage){
@@ -918,13 +960,15 @@ function saveRecord(){
   const {target:date,list:dictationItems}=currentPlan(),master=masterPlanFor(date),nextMaster=masterPlanFor(plus(date,1));
   // 新词不再由家长手输始终以总表为准；家长每天只录批改后的错误词。
   const newItems=master?.words||[],errorItems=parseEntries($('errorWords').value),nextNewItems=nextMaster?.words||[];
+  const statuses=correctionStatusMap();
   const newWords=newItems.map(x=>x.word),errors=errorItems.map(x=>x.word),nextNewWords=nextNewItems.map(x=>x.word);
+  const unfamiliarWords=Object.entries(statuses).filter(([,status])=>status==='unfamiliar').map(([word])=>word);
   if(!dictationItems.length&&!newWords.length&&!errors.length){alert('当前没有可保存的默写词，请先确认学习日期。');return}
   // 当天打印过的清单就是当天实默写池；这样扫码勾错或手工录后，所有正确词都会进入下一轮线。
   data.printedPlans[date]=cloneItems(dictationItems);
   const reviewedWords=dictationItems.map(x=>norm(x.word));
   data.records=data.records.filter(r=>r.date!==date);
-  const record={date,newWords,errors,nextNewWords,newItems,errorItems,nextNewItems,dictationItems:cloneItems(dictationItems),reviewedWords:reviewedWords.length?reviewedWords:newWords,khan:$('khanDone').value,masterFocus:master?.focus||''};
+  const record={date,newWords,errors,unfamiliarWords,wordStatuses:statuses,nextNewWords,newItems,errorItems,nextNewItems,dictationItems:cloneItems(dictationItems),reviewedWords:reviewedWords.length?reviewedWords:newWords,khan:$('khanDone').value,masterFocus:master?.focus||''};
   data.records.push(record);data.records.sort((a,b)=>a.date.localeCompare(b.date));invalidateUncorrectedFuturePlans(date);rebuildWordState();
   // 保存下一次清单；明天录入批改结果后，系统就知道哪些词实际参与过默写。
   record.nextPlan=buildPlan(plus(date,1)).list;
@@ -935,6 +979,15 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function highlightEnglish(word){return escapeHtml(word).replace(/[aeiou]/gi,letter=>`<em class="vowel-mark">${letter}</em>`);}
 function highlightIpa(ipa){return escapeHtml(ipa).replace(/[iɪeɛæɑɒɔʊuʌəɜɐɚ]/g,letter=>`<em class="vowel-mark">${letter}</em>`);}
 function correctionWords(){return [...document.querySelectorAll('#correctionWords input:checked')].map(x=>norm(x.value));}
+function draftForDate(date){try{const draft=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||'null');return draft?.date===date?draft:null;}catch{return null;}}
+function correctionStatusMap(){
+  const statuses={};
+  document.querySelectorAll('#correctionWords input[data-correction-word]').forEach(input=>{
+    const word=norm(input.dataset.correctionWord||input.value),status=input.dataset.status||'';
+    if(word&&status)statuses[word]=status;
+  });
+  return statuses;
+}
 function correctionDates(){
   const dates=allMasterPlans().map(x=>x.date).filter(Boolean).concat(data.records.map(x=>x.date),Object.keys(HISTORICAL_DICTATION_ITEMS||{}));
   const first=dates.sort()[0]||realToday(),result=[];
@@ -960,6 +1013,14 @@ function syncCheckedErrors(){
   const extras=parseEntries($('errorWords').value).filter(x=>!list.some(y=>norm(y.word)===x.word));
   $('errorWords').value=[...checked,...extras.map(x=>x.word)].join('\n');saveDraft();
 }
+function setCorrectionStatus(word,status){
+  const input=[...document.querySelectorAll('#correctionWords input[data-correction-word]')].find(x=>norm(x.dataset.correctionWord)===norm(word));
+  if(!input)return;
+  input.dataset.status=status;
+  input.checked=status==='wrong';
+  input.closest('.correction-choice')?.setAttribute('data-status',status);
+  syncCheckedErrors();
+}
 function renderCorrectionPicker(){
   // 可选择过去任意一天补批改；日期由同一份默写清单驱动。
   const {target:date,list:planned}=currentPlan(), master=masterPlanFor(date);
@@ -969,12 +1030,20 @@ function renderCorrectionPicker(){
   picker.innerHTML=correctionDates().map(day=>`<option value="${day}">${dateLabel(day)}${day>realToday()?'（明天待默写，仅查看）':(data.records.some(r=>r.date===day&&!r.seed)?'（已批改，可修改）':'（可补批改）')}</option>`).join('');
   picker.value=date;
   const list=sortCorrectionItems(planned.length?planned:(master?.words||[]).map(x=>({...x,tag:'当天新词'})));
+  const existing=data.records.find(record=>record.date===date);
+  const draft=draftForDate(date);
+  const persisted={...(existing?.wordStatuses||{}),...(draft?.statuses||{})};
   const selected=new Set(parseEntries($('errorWords').value).map(x=>x.word));
   $('correctionDate').textContent=date;
-  const counts=allErrorCounts(),metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{const detail=itemFor(x.word,metas),count=counts[norm(x.word)]||0,last=latestErrorDate(x.word);return `<label class="correction-choice ${previewOnly?'preview-only':''}"><input type="checkbox" value="${escapeHtml(x.word)}" ${selected.has(norm(x.word))?'checked':''} ${previewOnly?'disabled':''}><span>${i+1}. <b>${highlightEnglish(x.word)}</b> <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><small>${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small>${escapeHtml(x.tag||'')}｜历史错误 ${count} 次${last?`｜最近 ${last}`:''}</small></span></label>`}).join(''):'<p>这一天暂时没有可供批改的默写词。</p>';
+  const counts=allErrorCounts(),metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{
+    const detail=itemFor(x.word,metas),count=counts[norm(x.word)]||0,last=latestErrorDate(x.word),word=norm(x.word);
+    const status=persisted[word]||(selected.has(word)?'wrong':'known');
+    return `<label class="correction-choice ${previewOnly?'preview-only':''}" data-status="${status}"><input data-correction-word="${escapeHtml(word)}" data-status="${status}" type="checkbox" value="${escapeHtml(x.word)}" ${status==='wrong'?'checked':''} ${previewOnly?'disabled':''}><span>${i+1}. <b>${highlightEnglish(x.word)}</b> <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><small>${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small>${escapeHtml(x.tag||'')}｜历史错误 ${count} 次${last?`｜最近 ${last}`:''}</small><span class="word-status-actions"><button type="button" data-word-status="known" data-word="${escapeHtml(word)}" ${previewOnly?'disabled':''}>会了</button><button type="button" data-word-status="unfamiliar" data-word="${escapeHtml(word)}" ${previewOnly?'disabled':''}>不熟</button><button type="button" data-word-status="wrong" data-word="${escapeHtml(word)}" ${previewOnly?'disabled':''}>错了</button></span></span></label>`;
+  }).join(''):'<p>这一天暂时没有可供批改的默写词。</p>';
   const saveButton=$('saveAndPlan');saveButton.disabled=previewOnly;
   if(previewOnly){$('lateCorrectionHint').textContent='正在查看系统生成的明天默写词：仅供预习、朗读和复制，明天默写后再回来批改。';}
-  document.querySelectorAll('#correctionWords input:not(:disabled)').forEach(input=>input.onchange=syncCheckedErrors);
+  document.querySelectorAll('#correctionWords input:not(:disabled)').forEach(input=>input.onchange=()=>{input.dataset.status=input.checked?'wrong':'known';input.closest('.correction-choice')?.setAttribute('data-status',input.dataset.status);syncCheckedErrors();});
+  document.querySelectorAll('#correctionWords [data-word-status]').forEach(button=>button.onclick=event=>{event.preventDefault();event.stopPropagation();setCorrectionStatus(button.dataset.word,button.dataset.wordStatus);renderCorrectionPicker();});
 }
 async function enrichCustomEntry(entry,addedDate=''){
   const base=itemFor(entry.word,allMetas());
