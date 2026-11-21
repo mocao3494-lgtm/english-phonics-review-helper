@@ -530,15 +530,14 @@ function stableShuffle(items,seedText){
 }
 function buildPlan(targetDate){
   const due=dueWords(targetDate),counts=allErrorCounts(),state=rebuildWordState();
-  let list=[],added=new Set(); const add=(word,tag)=>{word=norm(word);if(word&&!added.has(word)){list.push({word,tag});added.add(word)}};
+  let list=[],added=new Set(); const add=(word,tag)=>{word=norm(word);if(word&&!added.has(word)&&list.length<40){list.push({word,tag});added.add(word)}};
   // 1. 总表日期优先：每固定5个新词绝不因错词或排序而消失。
   const scheduledPlan=masterPlanFor(targetDate);(scheduledPlan?.words||[]).slice(0,5).forEach(w=>add(w.word,scheduledPlan?.source==='parent'?'家长新增·必默':'今日新词·必默'));if(!scheduledPlan)scheduledWords(targetDate).forEach(w=>add(w,'今日新词·必默'));
-  // 家长临时加入的词也视作“新词”，先出现一次，再进入同一条复习曲线。
-  customPendingWords(targetDate).forEach(x=>add(x.word,'家长新增·必默'));
+  // 家长临时新增词不占用基础 40 个名额；在 mergeDailyNewWords 中额外追加。
   // 2. 错词先按“次日→第3→第7→14→第30天”回归；错得越多，越靠前进入候选池。
   Object.entries(state).filter(([,s])=>s.nextDue<=targetDate&&s.errors>0)
     .sort((a,b)=>a[1].nextDue.localeCompare(b[1].nextDue)||b[1].errors-a[1].errors).forEach(([w,s])=>add(w,`错词曲线·第${Math.min(s.stage+1,5)}轮`));
-  // 高频词优先；课程固定新词和家长新增词均额外保留，不以固定数量截断。
+  // 高频词优先；基础清单固定 40 个，课程当天固定新词优先进入这 40 个。
   Object.entries(counts).filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(([w,n])=>add(w,`高频错词·${n}次`));
   // 历史错题每次稳定轮换 12 个：同一天刷新不变，不同日期会换一批，确保所有旧错词都能重新出现。
   const historical=Object.entries(historicalErrors()).sort((a,b)=>(+b[1].count||0)-(+a[1].count||0)||String(b[1].lastDate||'').localeCompare(String(a[1].lastDate||'')));
@@ -618,9 +617,9 @@ function planForDate(date){
   const yesterday=data.records.find(r=>plus(r.date,1)===date);
   const saved=(yesterday?.nextPlan||[]).map(x=>typeof x==='string'?x:x.word).filter(Boolean);
   const fresh=buildPlan(date).list;
-  // 固定新词、家长新增词与已生成复习词全部合并；不再以 40 词为上限截断。
+  // 基础复习清单固定 40 个；家长新增词会在展示时额外追加，不在此处挤占名额。
   const merged=[...fresh,...saved.map(word=>({word,tag:'已生成默写'}))];
-  const seen=new Set();return merged.filter(x=>!seen.has(norm(x.word))&&seen.add(norm(x.word)));
+  const seen=new Set();return merged.filter(x=>!seen.has(norm(x.word))&&seen.add(norm(x.word))).slice(0,40);
 }
 function planHealth(date,list){
   const required=(masterPlanFor(date)?.words||[]).map(x=>norm(x.word));
@@ -763,7 +762,7 @@ function render(){const {target,list}=currentPlan(),next=nextPlan(); const daily
   const state=data.wordState||rebuildWordState();
   const metas=allMetas();$('dictationList').innerHTML=words.map((x,i)=>{const progress=state[norm(x.word)],detail=itemFor(x.word,metas);const reason=(x.tag||'').includes('错词')?'因上次默写出错，需要优先复习':(x.tag||'').includes('新词')?'新学习的单词，首次进入默写':'按间隔复习曲线抽取';const status=progress?`${reason}｜已错 ${progress.errors} 次；下次复习 ${progress.nextDue}`:`${reason}｜首次出现或基础抽查`;return `<div class="word"><b>${i+1}.</b> ${highlightEnglish(x.word)} <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><span class="tag">${escapeHtml(x.tag||'')}</span><small class="word-detail">${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small class="word-status">${escapeHtml(status)}</small></div>`}).join('')||(next.awaitingCorrection?'<p>请先勾选今天写错的单词并点击“保存错词并生成明天复习”。保存后，系统才会根据今天的结果、历史错词和记忆曲线生成下一次清单。</p>':'<p>暂时没有需要默写的单词。</p>');
   const health=planHealth(next.target,words);
-  $('planNote').textContent=next.awaitingCorrection?'明天固定的 5 个新词可在上方“今天的新词”中预习；复习词必须等今天批改保存后才会定稿。':(!health.ok?`清单校验未通过：缺少 ${health.missing.join('、')||'固定新词'}。请不要使用此清单，并联系维护者。`:`本次共 ${words.length} 个词：课程固定新词、家长新增词与间隔复习词都会完整保留，不设 40 词上限。`);
+  $('planNote').textContent=next.awaitingCorrection?'明天固定的 5 个新词可在上方“今天的新词”中预习；复习词必须等今天批改保存后才会定稿。':(!health.ok?`清单校验未通过：缺少 ${health.missing.join('、')||'固定新词'}。请不要使用此清单，并联系维护者。`:`基础清单固定 40 个（含当天课程新词）；家长新增词会在此基础上额外追加，本次共 ${words.length} 个。`);
   $('weaknessContent').innerHTML=ws.length?ws.map(w=>`<div class="weak"><b>${w.name}<br><span class="score-bad">累错误 ${w.count} 次；近7次记录 ${w.recent} 次</span></b><span>${w.why}<br><small>建议检验：${w.test}</small></span></div>`).join(''):'<p>还没有录入错词。录后会按字母组合、元音、音节、语、词尾和不规则词形自动分析</p>';
   $('khanContent').innerHTML=`<p><b>${rec.title}</b></p><ol class="rule-list"><li>点 <b>Reading</b> → 右上角选 <b>1st Grade</b>。</li><li>找 <b>${rec.course}</b></li><li>今天点 <b>${rec.card}</b>。</li><li>${rec.text}</li><li>完成后让孩子：“我今天学的是 ______，它常读 ______，例如 ______。”说不出就不掌握。</li><li><b>再加 5 分钟迁移</b>Reading Fluency 读一小段，或每 2 次 Books / Early Readers。让孩子在物里圈出今天的组合，读出含它一句话；图书里遇到不规则词不来考拼读规则。</li></ol>`;
   const t=data.tests||{}; const rows=[['字母组合认',t.combo,10,8],['陌生词读写',t.decode,10,8],['Magic e 对比',t.magic,4,3],['多音节拆分',t.syllable,5,4]]; $('checkContent').innerHTML='<p><b>系统根据当前最的薄弱项生成：</b></p><ol class="rule-list">'+autoChecks(ws).map(x=>`<li>${x}</li>`).join('')+'</ol><p><b>您填写过的检验结果：</b></p><ul class="rule-list">'+rows.map(([name,score,total,pass])=>`<li><b>${name}</b>：${score??'未填'} / ${total}，${score!==undefined&&score!==''?(+score>=pass?'<span class="score-good">达到规则掌握线</span>':'<span class="score-bad">未达标：回到 Main/Basic + 陌生词纸笔练习</span>'):'可不填；系统已按错词自动整。'}</li>`).join('')+'</ul>';
