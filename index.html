@@ -84,6 +84,7 @@
         <label>日期 <input id="studyDate" type="date" /></label>
         <button type="button" class="secondary compact" id="returnToday">回到今天</button>
         <button type="button" class="secondary compact" id="fillMasterPlan">重新载入当天新词</button>
+        <div class="study-shift-box"><b>当天没学新词？</b><span>把原计划的 5 个词顺延到实际学习日；后面的课程会自动同步后移。</span><label>原计划日 <input id="postponeSourceDate" type="date" /></label><label>实际学习日 <input id="postponeActualDate" type="date" /></label><button type="button" class="secondary compact" id="postponeStudyDay">确认顺延课程</button><p class="help" id="studyShiftHint"></p></div>
         <p class="help" id="masterPlanHint"></p>
         <label>临时新增默写词 <small>每行一个英文；也可写“英文 | 中文 | 音标”。</small>
           <textarea id="customWords" rows="3" placeholder="例如：engine&#10;helmet | 头盔 | /ˈhelmɪt/"></textarea>
