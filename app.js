@@ -357,6 +357,15 @@ function customPendingWords(targetDate){
     });
   });
 }
+function activeCustomWords(targetDate){
+  const seen=new Set();
+  return (data.customWords||[]).filter(item=>{
+    const word=norm(item?.word||''),date=item?.addedDate||'';
+    if(!word||!date||date>targetDate||seen.has(word))return false;
+    seen.add(word);return true;
+  });
+}
+function baseTargetCount(targetDate){return 40+activeCustomWords(targetDate).length;}
 function allErrorCounts(){
   const c={};data.records.forEach(r=>(r.errors||[]).forEach(w=>c[norm(w)]=(c[norm(w)]||0)+1));
   // 历史错题本给的是累计次数，因此取更大的可信次数，避免与已录入的日记录重复相加。
@@ -403,22 +412,22 @@ const HISTORICAL_DICTATION_ITEMS={
 };
 const cloneItems=items=>(items||[]).map(x=>typeof x==='string'?{word:x}:{...x});
 function baseDictationItems(date,items){
-  // 旧版本曾把超过 40 个自动复习词写进缓存；读取时自动裁回基础 40。
-  // 课程当天固定新词优先占据基础名额；家长新增词单独追加，绝不挤占这 40 个。
-  const customWords=new Set((data.customWords||[]).filter(item=>(item.addedDate||'')<=date).map(item=>norm(item.word||'')));
-  const base=[],seen=new Set();
+  // 基础数量会随已加入的家长词长期增加：40 + 截至当天累计加入词数。
+  // 课程当天固定新词优先进入；新增词首次出现时也占据这个长期基础数量。
+  const target=baseTargetCount(date),base=[],seen=new Set();
+  const customForDate=(data.customWords||[]).filter(item=>(item.addedDate||'')===date);
+  const olderPending=customPendingWords(date).filter(item=>(item.addedDate||'')<date);
   const push=item=>{
     const word=norm(item?.word||item);
-    if(!word||seen.has(word)||customWords.has(word)||base.length>=40)return;
+    if(!word||seen.has(word)||base.length>=target)return;
     seen.add(word);base.push(typeof item==='string'?{word}:{...item,word});
   };
-  // 固定课程词不能因旧缓存排序而被推迟。
-  scheduledWords(date).forEach(word=>{
-    if(!seen.has(word)&&base.length<40){seen.add(word);base.push({word,tag:'今日新词·必默'});}
-  });
-  // 优先保留原有默写顺序；若清理后不足 40，则从正常记忆曲线补足。
+  scheduledWords(date).forEach(word=>push({word,tag:'今日新词·必默'}));
+  customForDate.forEach(item=>push({word:item.word,tag:'家长新增·必默'}));
+  olderPending.forEach(item=>push({word:item.word,tag:'家长新增·必默'}));
+  // 优先保留原有默写顺序；不足长期目标时，从正常记忆曲线补足。
   cloneItems(items).forEach(push);
-  if(base.length<40)buildPlan(date).list.forEach(push);
+  if(base.length<target)buildPlan(date).list.forEach(push);
   return base;
 }
 const PLAN_CACHE_CLEAN_VERSION='2026-11-21-prune-ungraded-oversize-plans-v1';
@@ -433,23 +442,7 @@ function cleanOversizeUnreviewedPlans(){
   localStorage.setItem(KEY,JSON.stringify(data));
 }
 function mergeDailyNewWords(date, items){
-  // 明确指定在当天的家长新增词始终先合并：无论旧清单或旧预览如何，
-  // 都不能把“加入到 20 号”悄悄改成下一天或从当前清单中遗漏。
-  const customForDate=(data.customWords||[]).filter(item=>(item.addedDate||'')===date);
-  const olderPending=customPendingWords(date).filter(item=>(item.addedDate||'')<date);
-  const required=[
-    ...scheduledWords(date).map(word=>({word,tag:'今日新词·必默'})),
-    ...customForDate.map(item=>({word:item.word,tag:'家长新增·必默'})),
-    ...olderPending.map(item=>({word:item.word,tag:'家长新增·必默'}))
-  ];
-  const merged=[],seen=new Set();
-  [...required,...baseDictationItems(date,items)].forEach(item=>{
-    const word=norm(item?.word||item);
-    if(!word||seen.has(word))return;
-    seen.add(word);
-    merged.push({...item,word});
-  });
-  return merged;
+  return baseDictationItems(date,items);
 }
 function dictationItemsFor(date){
   let source=[];
@@ -560,14 +553,14 @@ function stableShuffle(items,seedText){
 }
 function buildPlan(targetDate){
   const due=dueWords(targetDate),counts=allErrorCounts(),state=rebuildWordState();
-  let list=[],added=new Set(); const add=(word,tag)=>{word=norm(word);if(word&&!added.has(word)&&list.length<40){list.push({word,tag});added.add(word)}};
+  let list=[],added=new Set(); const add=(word,tag)=>{word=norm(word);if(word&&!added.has(word)&&list.length<baseTargetCount(targetDate)){list.push({word,tag});added.add(word)}};
   // 1. 总表日期优先：每固定5个新词绝不因错词或排序而消失。
   const scheduledPlan=masterPlanFor(targetDate);(scheduledPlan?.words||[]).slice(0,5).forEach(w=>add(w.word,scheduledPlan?.source==='parent'?'家长新增·必默':'今日新词·必默'));if(!scheduledPlan)scheduledWords(targetDate).forEach(w=>add(w,'今日新词·必默'));
-  // 家长临时新增词不占用基础 40 个名额；在 mergeDailyNewWords 中额外追加。
+  // 家长新增词会把长期基础数量提高；首次出现与后续错词复习仍走同一记忆曲线。
   // 2. 错词先按“次日→第3→第7→14→第30天”回归；错得越多，越靠前进入候选池。
   Object.entries(state).filter(([,s])=>s.nextDue<=targetDate&&s.errors>0)
     .sort((a,b)=>a[1].nextDue.localeCompare(b[1].nextDue)||b[1].errors-a[1].errors).forEach(([w,s])=>add(w,`错词曲线·第${Math.min(s.stage+1,5)}轮`));
-  // 高频词优先；基础清单固定 40 个，课程当天固定新词优先进入这 40 个。
+  // 高频词优先；基础数量为 40 加上截至当天累计加入的家长词数。
   Object.entries(counts).filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(([w,n])=>add(w,`高频错词·${n}次`));
   // 历史错题每次稳定轮换 12 个：同一天刷新不变，不同日期会换一批，确保所有旧错词都能重新出现。
   const historical=Object.entries(historicalErrors()).sort((a,b)=>(+b[1].count||0)-(+a[1].count||0)||String(b[1].lastDate||'').localeCompare(String(a[1].lastDate||'')));
@@ -647,9 +640,9 @@ function planForDate(date){
   const yesterday=data.records.find(r=>plus(r.date,1)===date);
   const saved=(yesterday?.nextPlan||[]).map(x=>typeof x==='string'?x:x.word).filter(Boolean);
   const fresh=buildPlan(date).list;
-  // 基础复习清单固定 40 个；家长新增词会在展示时额外追加，不在此处挤占名额。
+  // 基础数量为 40 加上已加入词数；课程新词优先，后续新增词持续保留在日清单容量中。
   const merged=[...fresh,...saved.map(word=>({word,tag:'已生成默写'}))];
-  const seen=new Set();return merged.filter(x=>!seen.has(norm(x.word))&&seen.add(norm(x.word))).slice(0,40);
+  const seen=new Set();return merged.filter(x=>!seen.has(norm(x.word))&&seen.add(norm(x.word))).slice(0,baseTargetCount(date));
 }
 function planHealth(date,list){
   const required=(masterPlanFor(date)?.words||[]).map(x=>norm(x.word));
