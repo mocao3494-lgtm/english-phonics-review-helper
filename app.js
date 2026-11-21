@@ -18,6 +18,7 @@ function loadStoredData(){
 }
 let data=loadStoredData();
 data.customWords=Array.isArray(data.customWords)?data.customWords:[];
+data.parentAddedLedger=Array.isArray(data.parentAddedLedger)?data.parentAddedLedger:[];
 const CUSTOM_DATE_FIX_VERSION='2026-11-20-material-words-preserve-plan-v5';
 if(data.customDateFixVersion!==CUSTOM_DATE_FIX_VERSION){
   const mistaken=new Set(['wood','fabric','paper','plastic','metal']);
@@ -30,6 +31,19 @@ if(data.customDateFixVersion!==CUSTOM_DATE_FIX_VERSION){
   const originalPlan=(previousRecord?.nextPlan||[]).map(item=>typeof item==='string'?{word:norm(item)}:{...item,word:norm(item?.word||'')}).filter(item=>item.word);
   if(originalPlan.length)data.printedPlans['2026-11-20']=originalPlan;
   data.customDateFixVersion=CUSTOM_DATE_FIX_VERSION;
+  localStorage.setItem(KEY,JSON.stringify(data));
+}
+const PARENT_ADDITION_LEDGER_VERSION='2026-11-21-parent-additions-v1';
+if(data.parentAdditionLedgerVersion!==PARENT_ADDITION_LEDGER_VERSION){
+  const ledger=new Map();
+  [...(data.parentAddedLedger||[]),...(data.customWords||[])].forEach(item=>{
+    const word=norm(item?.word||''),date=item?.addedDate||'';
+    if(word&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&(!ledger.has(word)||date<ledger.get(word)))ledger.set(word,date);
+  });
+  // 恢复本次家长已确认新增的 5 个词，防止旧版缓存丢失后每日数量被错误降回 40。
+  ['wood','fabric','paper','plastic','metal'].forEach(word=>{if(!ledger.has(word))ledger.set(word,'2026-11-20');});
+  data.parentAddedLedger=[...ledger.entries()].map(([word,addedDate])=>({word,addedDate}));
+  data.parentAdditionLedgerVersion=PARENT_ADDITION_LEDGER_VERSION;
   localStorage.setItem(KEY,JSON.stringify(data));
 }
 const query=new URLSearchParams(location.search);
@@ -359,11 +373,22 @@ function customPendingWords(targetDate){
 }
 function activeCustomWords(targetDate){
   const seen=new Set();
-  return (data.customWords||[]).filter(item=>{
+  return (data.parentAddedLedger||[]).filter(item=>{
     const word=norm(item?.word||''),date=item?.addedDate||'';
     if(!word||!date||date>targetDate||seen.has(word))return false;
     seen.add(word);return true;
   });
+}
+function syncParentAddedLedger(word,addedDate){
+  const normalized=norm(word||'');
+  if(!normalized||!/^\d{4}-\d{2}-\d{2}$/.test(addedDate||''))return;
+  data.parentAddedLedger=Array.isArray(data.parentAddedLedger)?data.parentAddedLedger:[];
+  const old=data.parentAddedLedger.find(item=>norm(item?.word||'')===normalized);
+  if(old)old.addedDate=addedDate;else data.parentAddedLedger.push({word:normalized,addedDate});
+}
+function removeParentAddedLedger(word){
+  const normalized=norm(word||'');
+  data.parentAddedLedger=(data.parentAddedLedger||[]).filter(item=>norm(item?.word||'')!==normalized);
 }
 function baseTargetCount(targetDate){return 40+activeCustomWords(targetDate).length;}
 function allErrorCounts(){
@@ -907,6 +932,7 @@ async function addCustomWords(){
         if(old.addedDate&&old.addedDate<affectedFrom)affectedFrom=old.addedDate;
         Object.assign(old,{...enriched,addedDate:effectiveDate||old.addedDate||enriched.addedDate});
       }else data.customWords.push(enriched);
+      syncParentAddedLedger(enriched.word,effectiveDate);
     }
     // 保留已经形成的默写清单；新增词由 mergeDailyNewWords 追加，不挤掉旧复习词。
     save();$('customWords').value='';$('customStatus').textContent=`已加入 ${entries.length} 个词，并已追加到 ${effectiveDate} 的默写清单，不替换原有复习词。`;render();
@@ -918,7 +944,7 @@ function renderCustomWordsManager(){
 }
 function saveCustomWordDate(index){
   const word=data.customWords?.[index],date=$('[data-custom-date="'+index+'"]')?.value;if(!word||!date)return;
-  word.addedDate=date;save();fill();showSaveToast('已更新新增词日期；已有默写清单保持不变。');
+  word.addedDate=date;syncParentAddedLedger(word.word,date);save();fill();showSaveToast('已更新新增词日期；每日基础数量会从该日期起同步调整。');
 }
 function publicPageUrl(date,items=[]){
   const packed=(items||[]).map(x=>norm(typeof x==='string'?x:x.word)).filter(Boolean).join('|');
@@ -971,7 +997,7 @@ $('correctionDatePicker').onchange=()=>{if(reviewMode){$('correctionDatePicker')
 $('correctionSort').onchange=()=>renderCorrectionPicker();
 $('returnToday').onclick=()=>{if(reviewMode)return;selectedDate=realToday();fill();};
 $('errorWords').onchange=()=>{saveDraft();renderCorrectionPicker();};$('khanDone').onchange=saveDraft;
-$('addCustomWords').onclick=addCustomWords;$('quickImportPlan').onclick=()=>$('importPlan').click();document.addEventListener('click',e=>{const del=e.target.closest('[data-custom-delete]');if(del){const i=+del.dataset.customDelete;if(confirm('确定删除这个家长新增词吗？')){data.customWords.splice(i,1);save();fill();}}});document.addEventListener('change',e=>{if(e.target.matches('[data-custom-date]'))saveCustomWordDate(+e.target.dataset.customDate);});document.addEventListener('click',e=>{const saveBtn=e.target.closest('[data-course-save]'),deleteBtn=e.target.closest('[data-course-delete]');if(saveBtn)applyCourseEdit(+saveBtn.dataset.courseSave);if(deleteBtn){const i=+deleteBtn.dataset.courseDelete;if(confirm('确定删除这一天家长新增的课程吗？')){data.curriculumPlan.splice(i,1);invalidateUncorrectedFuturePlans(realToday());save();fill();showSaveToast('已删除该日期的新增课程。');}}});
+$('addCustomWords').onclick=addCustomWords;$('quickImportPlan').onclick=()=>$('importPlan').click();document.addEventListener('click',e=>{const del=e.target.closest('[data-custom-delete]');if(del){const i=+del.dataset.customDelete;if(confirm('确定删除这个家长新增词吗？')){const word=data.customWords[i]?.word;data.customWords.splice(i,1);removeParentAddedLedger(word);save();fill();}}});document.addEventListener('change',e=>{if(e.target.matches('[data-custom-date]'))saveCustomWordDate(+e.target.dataset.customDate);});document.addEventListener('click',e=>{const saveBtn=e.target.closest('[data-course-save]'),deleteBtn=e.target.closest('[data-course-delete]');if(saveBtn)applyCourseEdit(+saveBtn.dataset.courseSave);if(deleteBtn){const i=+deleteBtn.dataset.courseDelete;if(confirm('确定删除这一天家长新增的课程吗？')){data.curriculumPlan.splice(i,1);invalidateUncorrectedFuturePlans(realToday());save();fill();showSaveToast('已删除该日期的新增课程。');}}});
 $('childName').onchange=()=>{data.profile={...(data.profile||{}),childName:$('childName').value.trim()};save();};$('ruleExceptions').onchange=()=>{data.ruleExceptions=parseLines($('ruleExceptions').value);save();render();};document.addEventListener('click',e=>{const button=e.target.closest('[data-speak]');if(button)speakWord(button.dataset.speak);});
 $('copyPasteWords').onclick=copyPasteWords;$('copyNextPasteWords').onclick=copyNextPasteWords;
 $('selectAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=true);syncCheckedErrors();};
