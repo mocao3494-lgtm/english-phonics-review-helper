@@ -9,7 +9,7 @@
   <title>英语拼读复习助手</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./upgrade.css?v=20261112-2" />
-  <link rel="stylesheet" href="./ui-20261115-37.css?v=20261121-75" />
+  <link rel="stylesheet" href="./ui-20261115-37.css?v=20261121-78" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
 </head>
 <body>
@@ -137,6 +137,7 @@
     <section class="card hidden" id="analysis">
       <h2>孩子当前薄弱分析（由所有错词自动累计）</h2>
       <div id="weaknessContent"></div>
+      <div class="actions"><button type="button" class="secondary" id="exportErrorReport">导出错题清单（WPS .doc）</button></div>
     </section>
 
     <section class="card hidden" id="khanPlan">
@@ -172,6 +173,11 @@
       <div id="historyContent"></div>
     </section>
 
+    <section class="card advanced-card" id="autoBackups">
+      <h2>自动备份恢复</h2>
+      <div id="autoBackupContent"></div>
+    </section>
+
     <button type="button" class="secondary more-tools" id="toggleAdvanced">显示更多功能（规则卡、录管理、备份）</button>
 
     <section class="card tools advanced-card">
@@ -193,7 +199,7 @@
   <script src="./mastery-baseline.js?v=20261121-72"></script>
   <script src="./planner.js?v=20261120-56"></script>
 <script src="./storage.js?v=20261120-56"></script>
-<script src="./app.js?v=20261121-77"></script>
+<script src="./app.js?v=20261121-78"></script>
 </body>
 </html>
 
