@@ -1000,6 +1000,25 @@ function normalizeLetterErrors(value){const result={};if(!value||typeof value!==
 function letterErrorsFromDom(){const result={};document.querySelectorAll('#correctionWords [data-letter-all]').forEach(all=>{const word=norm(all.dataset.letterAll);if(all.classList.contains('is-wrong')){result[word]=[-1];return;}const indices=[...document.querySelectorAll('#correctionWords [data-letter-word]')].filter(button=>norm(button.dataset.letterWord)===word&&button.classList.contains('is-wrong')).map(button=>+button.dataset.letterIndex).filter(Number.isInteger);if(indices.length)result[word]=[...new Set(indices)];});return result;}
 function letterPickerHtml(word,indices,previewOnly){const selected=new Set(indices||[]),all=selected.has(-1),disabled=previewOnly?'disabled':'',chars=[...word];const chips=chars.map((character,index)=>{const space=/\s/.test(character),active=all||selected.has(index);return '<button type="button" class="letter-chip '+(space?'space-chip ':'')+(active?'is-wrong':'')+'" data-letter-word="'+escapeHtml(norm(word))+'" data-letter-index="'+index+'" '+disabled+' aria-pressed="'+active+'">'+(space?'空格':escapeHtml(character))+'</button>';}).join('');return '<div class="letter-picker"><span class="letter-picker-title">点孩子写错、漏写或顺序错误的字母：</span><span class="letter-chips">'+chips+'</span><button type="button" class="letter-all '+(all?'is-wrong':'')+'" data-letter-all="'+escapeHtml(norm(word))+'" '+disabled+'>整词不会</button></div>';}
 function setWordLetterSelection(word,indices){const key=norm(word),selected=new Set(indices||[]),allButton=[...document.querySelectorAll('#correctionWords [data-letter-all]')].find(button=>norm(button.dataset.letterAll)===key);if(!allButton)return;const whole=selected.has(-1);allButton.classList.toggle('is-wrong',whole);document.querySelectorAll('#correctionWords [data-letter-word]').forEach(button=>{if(norm(button.dataset.letterWord)!==key)return;button.classList.toggle('is-wrong',whole||selected.has(+button.dataset.letterIndex));});const input=[...document.querySelectorAll('#correctionWords input[data-correction-word]')].find(item=>norm(item.dataset.correctionWord)===key);if(input)input.checked=whole||selected.size>0;}
+function correctionDates(){
+  const dates=allMasterPlans().map(x=>x.date).filter(Boolean).concat(data.records.map(x=>x.date),Object.keys(HISTORICAL_DICTATION_ITEMS||{}));
+  const first=dates.sort()[0]||realToday(),result=[];
+  for(let day=first;day<=realToday();day=plus(day,1))result.push(day);
+  const tomorrow=plus(realToday(),1),todayCompleted=data.records.some(r=>r.date===realToday()&&!r.seed);
+  if(todayCompleted&&planForDate(tomorrow).length)result.push(tomorrow);
+  return [...new Set([...result,selectedDate||realToday()])].sort((a,b)=>b.localeCompare(a));
+}
+function latestErrorDate(word){
+  const target=norm(word),recordDate=data.records.filter(r=>(r.errors||[]).some(w=>norm(w)===target)).map(r=>r.date).sort().at(-1)||'';
+  const historical=historicalErrors()[target]?.lastDate||'';
+  return recordDate>historical?recordDate:historical;
+}
+function sortCorrectionItems(items){
+  const mode=$('correctionSort')?.value||'original',counts=allErrorCounts();
+  if(mode==='errors')return [...items].sort((a,b)=>(counts[norm(b.word)]||0)-(counts[norm(a.word)]||0)||String(a.word).localeCompare(String(b.word)));
+  if(mode==='recent')return [...items].sort((a,b)=>latestErrorDate(b.word).localeCompare(latestErrorDate(a.word))||(counts[norm(b.word)]||0)-(counts[norm(a.word)]||0));
+  return items;
+}
 function automaticCorrectionStatus(word,date,existing){const key=norm(word),errors=new Set((existing?.errors||[]).map(norm));if(errors.has(key))return 'wrong';const count=allErrorCounts()[key]||0,state=rebuildWordState()[key];if(count>=2||(state?.errors>0&&state.lastReviewed!==date))return 'unfamiliar';return 'known';}
 function updateWordErrorState(word,date,existing){const key=norm(word),hasError=!!letterErrorsFromDom()[key]?.length,input=[...document.querySelectorAll('#correctionWords input[data-correction-word]')].find(item=>norm(item.dataset.correctionWord)===key);if(input)input.checked=hasError;const status=hasError?'wrong':automaticCorrectionStatus(key,date,existing),card=input?.closest('.correction-choice');card?.setAttribute('data-status',status);const badge=card?.querySelector('.auto-status');if(badge){badge.className='auto-status auto-status-'+status;badge.textContent={known:'会了',unfamiliar:'不熟',wrong:'错了'}[status];}}
 function syncCheckedErrors(){const checked=correctionWords(),{list}=currentPlan(),extras=parseEntries($('errorWords').value).filter(x=>!list.some(y=>norm(y.word)===x.word));$('errorWords').value=[...checked,...extras.map(x=>x.word)].join('\n');saveDraft();}
