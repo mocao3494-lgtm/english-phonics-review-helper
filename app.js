@@ -156,7 +156,7 @@ function renderTodayWords(){
     todayDate.textContent=dateLabel(date)+'｜今天学习的 5 个新词';
     todayChips.innerHTML=plan?.words?.length?plan.words.map((x,i)=>'<span class="word-chip"><b>'+(i+1)+'.</b> '+highlightEnglish(x.word)+'</span>').join(''):'<span class="word-chip">今天为复习日：没有固定新词</span>';
     todayFocus.textContent=plan?.words?.length?'今天重点：'+(plan.focus||'按词块读、说、写。'):'今天先完成默写批改和复习即可。';
-    tomorrowDate.textContent=dateLabel(plus(date,1))+'｜明天准备学习的 5 个新词';
+    const nextStudyDate=tomorrow?.date||plus(date,1),isTomorrow=nextStudyDate===plus(date,1);tomorrowDate.textContent=dateLabel(nextStudyDate)+'｜'+(isTomorrow?'明天准备学习的 5 个新词':'下一次准备学习的 5 个新词');
     tomorrowChips.innerHTML=tomorrow?.words?.length?tomorrow.words.map((x,i)=>'<span class="word-chip"><b>'+(i+1)+'.</b> '+highlightEnglish(x.word)+'</span>').join(''):'<span class="word-chip">明天为复习日：没有固定新词</span>';
     tomorrowFocus.textContent=tomorrow?.words?.length?'明天重点：'+(tomorrow.focus||'按词块读、说、写。'):'';
   }
