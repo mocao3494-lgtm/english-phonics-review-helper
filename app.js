@@ -61,9 +61,36 @@ if(data.historicalErrorDataVersion!==HISTORICAL_ERROR_DATA_VERSION){
   data.historicalErrorDataVersion=HISTORICAL_ERROR_DATA_VERSION;
   localStorage.setItem(KEY,JSON.stringify(data));
 }
-const allMasterPlans=()=>[...(data.curriculumPlan||[]),...(window.MASTER_DAILY_PLAN||[])];
+data.studyShifts=Array.isArray(data.studyShifts)?data.studyShifts:[];
+const daysBetween=(from,to)=>Math.round((new Date(to+'T12:00:00')-new Date(from+'T12:00:00'))/86400000);
+function shiftedMasterPlans(){
+  const rules=[...data.studyShifts].filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x?.sourceDate||'')&&/^\d{4}-\d{2}-\d{2}$/.test(x?.actualDate||'')).sort((a,b)=>a.sourceDate.localeCompare(b.sourceDate));
+  const bySource=new Map(rules.map(x=>[x.sourceDate,x]));
+  let offset=0;
+  return [...(window.MASTER_DAILY_PLAN||[])].sort((a,b)=>a.date.localeCompare(b.date)).map(plan=>{
+    let effective=plus(plan.date,offset),rule=bySource.get(plan.date);
+    if(rule){offset+=daysBetween(effective,rule.actualDate);effective=rule.actualDate;}
+    return {...plan,date:effective,originalDate:plan.date};
+  });
+}
+const allMasterPlans=()=>[...(data.curriculumPlan||[]),...shiftedMasterPlans()].sort((a,b)=>a.date.localeCompare(b.date));
 const masterPlanFor=date=>allMasterPlans().find(x=>x.date===date);
 const nextLearningPlanFor=date=>allMasterPlans().filter(x=>x.date>=date&&(x.words||[]).length).sort((a,b)=>a.date.localeCompare(b.date))[0]||null;
+function renderStudyShiftHint(){
+  const box=$('studyShiftHint');if(!box)return;
+  const rows=(data.studyShifts||[]).sort((a,b)=>a.sourceDate.localeCompare(b.sourceDate));
+  box.textContent=rows.length?rows.map(x=>`已顺延：${x.sourceDate} → ${x.actualDate}（之后课程已同步后移）`).join('；'):'没有待处理的顺延课程。';
+}
+function postponeStudyDay(){
+  const source=$('postponeSourceDate')?.value,actual=$('postponeActualDate')?.value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(source||'')||!/^\d{4}-\d{2}-\d{2}$/.test(actual||''))return alert('请先选择原计划日和实际学习日。');
+  if(actual<source)return alert('实际学习日不能早于原计划日。');
+  if(!(window.MASTER_DAILY_PLAN||[]).some(x=>x.date===source))return alert('该日期没有固定课程新词，不能顺延。');
+  data.studyShifts=(data.studyShifts||[]).filter(x=>x.sourceDate!==source);
+  data.studyShifts.push({sourceDate:source,actualDate:actual});
+  invalidateUncorrectedFuturePlans(source);save();selectedDate=actual;fill();
+  showSaveToast('已把 '+source+' 的 5 个新词顺延到 '+actual+'；其后课程已自动顺延。');
+}
 // 从 0 级、1 级和当前已学的 2 级教材整理出的长期复习池。它不等同于错题本：
 // 所有已学词都会轮换出现，实际默写结果再决定之后的间隔与优先级。
 const learnedVocabulary=()=>Array.isArray(window.LEARNED_VOCABULARY)?window.LEARNED_VOCABULARY:[];
@@ -797,7 +824,7 @@ async function copyTextFrom(boxId,emptyMessage,successMessage){
 async function copyPasteWords(){return copyTextFrom('pasteWordList','当前没有可复制的默写词。','已复制本次默写词，可直接粘贴到其他软件。');}
 async function copyNextPasteWords(){return copyTextFrom('nextPasteWordList','请先保存当天批改结果，再复制下一次待默写词。','已复制下一次待默写词，可直接粘贴到其他软件。');}
 function render(){const {target,list}=currentPlan(),next=nextPlan(); const dailyRecord=currentDailyRecord(target,list); const last=data.records.at(-1); const ws=weakness(); const targetFocus=masterPlanFor(target)?.focus||''; const rec=khanRecommendation(ws,targetFocus);
-  renderCorrectionPicker();renderPendingCorrections();renderPasteList();renderCurriculumManager();renderCustomWordsManager();
+  renderCorrectionPicker();renderPendingCorrections();renderPasteList();renderCurriculumManager();renderCustomWordsManager();renderStudyShiftHint();
   ['plan'].forEach(id=>$(id).classList.remove('hidden'));
   if(last||Object.values(data.tests||{}).some(x=>x!=='')){['analysis','khanPlan','checkPlan','weekend','history','progress','weekReport'].forEach(id=>$(id).classList.remove('hidden'));}
   $('nextDate').textContent='（'+next.target+'）';
@@ -979,7 +1006,7 @@ function fill(){
   $('childName').value=data.profile.childName||'';
   seedKnownErrors();
   // 普通口始终使用设备当天；只有二维的 mark=1 才允许打开历史日期。
-  const now=reviewMode&&queryDate?queryDate:(selectedDate||realToday()); selectedDate=now; $('studyDate').value=now;const customDate=$('customWordsDate');if(customDate&&!customDate.value)customDate.value=plus(now,1);
+  const now=reviewMode&&queryDate?queryDate:(selectedDate||realToday()); selectedDate=now; $('studyDate').value=now;const customDate=$('customWordsDate');if(customDate&&!customDate.value)customDate.value=plus(now,1);const postponeSource=$('postponeSourceDate'),postponeActual=$('postponeActualDate');if(postponeSource&&!postponeSource.value)postponeSource.value=now;if(postponeActual&&!postponeActual.value)postponeActual.value=now;
   const existing=data.records.find(r=>r.date===now);
   if(existing){$('errorWords').value=formatItems(existing.errorItems?.length?existing.errorItems:existing.errors);$('khanDone').value=existing.khan||'';}
   else {const draft=(()=>{try{return JSON.parse(sessionStorage.getItem(DRAFT_KEY)||'null')}catch{return null}})();$('errorWords').value=draft?.date===now?draft.errors||'':'';$('khanDone').value=draft?.date===now?draft.khan||'':'';}
@@ -988,7 +1015,7 @@ function fill(){
   if(reviewMode)setTimeout(()=>$('correctionBox').scrollIntoView({behavior:'smooth',block:'start'}),250);
 }
 $('saveAndPlan').onclick=saveRecord;$('saveTest').onclick=saveTest;
-$('fillMasterPlan').onclick=fillMasterPlan;
+$('fillMasterPlan').onclick=fillMasterPlan;$('postponeStudyDay').onclick=postponeStudyDay;
 $('studyDate').onchange=()=>{
   if(reviewMode){$('studyDate').value=queryDate;return;}
   selectedDate=$('studyDate').value||realToday();fill();
