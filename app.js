@@ -360,6 +360,16 @@ async function setupCloudSync(){
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(data));;queueCloudPush();}
 const DRAFT_KEY='phonics-helper-draft-v1';function childName(){return String(data.profile?.childName||'').trim();}function saveDraft(){const {target}=currentPlan();sessionStorage.setItem(DRAFT_KEY,JSON.stringify({date:target,errors:$('errorWords').value,khan:$('khanDone').value}));}function clearDraft(){sessionStorage.removeItem(DRAFT_KEY);}function renderDiagnostics(){const box=$('diagnosticContent');if(!box)return;const plans=allMasterPlans().map(x=>x.date).filter(Boolean).sort(),build=document.documentElement.dataset.build||'未知';box.textContent=`网页版本：${build}｜学习记录：${data.records.length} 天｜课程覆盖至：${plans.at(-1)||'未设置'}｜最近备份：${data.lastBackupAt||'尚未备份'}｜数据只保存在本机浏览。`;}
+const LEARNING_BASELINE={level0:{learned:94,mastered:94},level1:{learned:368,mastered:159},level2:{course:470,learned:137,mastered:25}};
+function renderLearningBaseline(){
+  const box=$('learningBaselineContent');if(!box)return;
+  const rows=[
+    ['0级',LEARNING_BASELINE.level0.learned,LEARNING_BASELINE.level0.mastered],
+    ['1级',LEARNING_BASELINE.level1.learned,LEARNING_BASELINE.level1.mastered],
+    ['2级',LEARNING_BASELINE.level2.learned,LEARNING_BASELINE.level2.mastered]
+  ];
+  box.innerHTML='<div class="baseline-grid">'+rows.map(([name,learned,mastered])=>'<div><b>'+name+'</b><span>已学 '+learned+'｜已掌握 '+mastered+'｜重点复习 '+(learned-mastered)+'</span></div>').join('')+'</div><p class="help">2级课程共 470 词，当前尚未学习 333 词。此底账只影响复习分层，不改变课程新词的顺序、日期或重复词。</p>';
+}
 function speakWord(word){if(!('speechSynthesis' in window)){alert('当前浏览器不支持朗读。');return;}speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(word);utterance.lang='en-GB';utterance.rate=.82;speechSynthesis.speak(utterance);}
 function storyReader(text){return String(text).split(/(?<=[.!?])\s+/).filter(Boolean).map(sentence=>`<span class="story-sentence"><button type="button" class="speak-word" data-speak="${escapeHtml(sentence)}" aria-label="朗读这句话">🔊</button>${escapeHtml(sentence)}</span>`).join(' ');}
 function showActionToast(message,label,action){
@@ -824,7 +834,7 @@ async function copyTextFrom(boxId,emptyMessage,successMessage){
 async function copyPasteWords(){return copyTextFrom('pasteWordList','当前没有可复制的默写词。','已复制本次默写词，可直接粘贴到其他软件。');}
 async function copyNextPasteWords(){return copyTextFrom('nextPasteWordList','请先保存当天批改结果，再复制下一次待默写词。','已复制下一次待默写词，可直接粘贴到其他软件。');}
 function render(){const {target,list}=currentPlan(),next=nextPlan(); const dailyRecord=currentDailyRecord(target,list); const last=data.records.at(-1); const ws=weakness(); const targetFocus=masterPlanFor(target)?.focus||''; const rec=khanRecommendation(ws,targetFocus);
-  renderCorrectionPicker();renderPendingCorrections();renderPasteList();renderCurriculumManager();renderCustomWordsManager();renderStudyShiftHint();
+  renderCorrectionPicker();renderPendingCorrections();renderPasteList();renderCurriculumManager();renderCustomWordsManager();renderStudyShiftHint();renderLearningBaseline();
   ['plan'].forEach(id=>$(id).classList.remove('hidden'));
   if(last||Object.values(data.tests||{}).some(x=>x!=='')){['analysis','khanPlan','checkPlan','weekend','history','progress','weekReport'].forEach(id=>$(id).classList.remove('hidden'));}
   $('nextDate').textContent='（'+next.target+'）';
