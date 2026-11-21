@@ -402,6 +402,32 @@ const HISTORICAL_DICTATION_ITEMS={
   ].map(word=>({word,tag:'11月14日实际默写'}))
 };
 const cloneItems=items=>(items||[]).map(x=>typeof x==='string'?{word:x}:{...x});
+function baseDictationItems(date,items){
+  // 旧版本曾把超过 40 个自动复习词写进缓存；读取时自动裁回基础 40。
+  // 课程当天固定新词优先占据基础名额；家长新增词单独追加，绝不挤占这 40 个。
+  const customWords=new Set((data.customWords||[]).filter(item=>(item.addedDate||'')<=date).map(item=>norm(item.word||'')));
+  const base=[],seen=new Set();
+  scheduledWords(date).forEach(word=>{
+    if(!seen.has(word)&&base.length<40){seen.add(word);base.push({word,tag:'今日新词·必默'});}
+  });
+  cloneItems(items).forEach(item=>{
+    const word=norm(item?.word||item);
+    if(!word||seen.has(word)||customWords.has(word)||base.length>=40)return;
+    seen.add(word);base.push({...item,word});
+  });
+  return base;
+}
+const PLAN_CACHE_CLEAN_VERSION='2026-11-21-prune-ungraded-oversize-plans-v1';
+function cleanOversizeUnreviewedPlans(){
+  if(data.planCacheCleanVersion===PLAN_CACHE_CLEAN_VERSION)return;
+  const completed=new Set((data.records||[]).filter(record=>!record.seed).map(record=>record.date));
+  data.printedPlans=data.printedPlans&&typeof data.printedPlans==='object'?data.printedPlans:{};
+  Object.keys(data.printedPlans).forEach(date=>{
+    if(!completed.has(date))data.printedPlans[date]=baseDictationItems(date,data.printedPlans[date]);
+  });
+  data.planCacheCleanVersion=PLAN_CACHE_CLEAN_VERSION;
+  localStorage.setItem(KEY,JSON.stringify(data));
+}
 function mergeDailyNewWords(date, items){
   // 明确指定在当天的家长新增词始终先合并：无论旧清单或旧预览如何，
   // 都不能把“加入到 20 号”悄悄改成下一天或从当前清单中遗漏。
@@ -413,7 +439,7 @@ function mergeDailyNewWords(date, items){
     ...olderPending.map(item=>({word:item.word,tag:'家长新增·必默'}))
   ];
   const merged=[],seen=new Set();
-  [...required,...cloneItems(items)].forEach(item=>{
+  [...required,...baseDictationItems(date,items)].forEach(item=>{
     const word=norm(item?.word||item);
     if(!word||seen.has(word))return;
     seen.add(word);
@@ -584,7 +610,7 @@ const hasRequiredNewWords=(date,items)=>{
 };
 function storedPlanFor(date){
   const stored=data.printedPlans?.[date];
-  return Array.isArray(stored)&&stored.length&&hasRequiredNewWords(date,stored)?cloneItems(stored):null;
+  return Array.isArray(stored)&&stored.length&&hasRequiredNewWords(date,stored)?baseDictationItems(date,stored):null;
 }
 function currentPlan(){
   const target=reviewMode&&queryDate?queryDate:(selectedDate||realToday());
@@ -925,6 +951,7 @@ function exportDailyWorksheet(){const record=currentDailyPrintRecord();downloadD
 function printDailyWorksheet(){const record=currentDailyPrintRecord();openPrint(`英语拼读每日总表｜${dateLabel(record.date)}`,dailyCardMarkup(record));}
 function fill(){
   data.customWords=Array.isArray(data.customWords)?data.customWords:[];
+  cleanOversizeUnreviewedPlans();
   data.profile=data.profile&&typeof data.profile==='object'?data.profile:{childName:''};data.ruleExceptions=Array.isArray(data.ruleExceptions)?data.ruleExceptions:[];$('ruleExceptions').value=data.ruleExceptions.join('\n');
   $('childName').value=data.profile.childName||'';
   seedKnownErrors();
