@@ -94,7 +94,18 @@ function postponeStudyDay(){
 // 从 0 级、1 级和当前已学的 2 级教材整理出的长期复习池。它不等同于错题本：
 // 所有已学词都会轮换出现，实际默写结果再决定之后的间隔与优先级。
 const learnedVocabulary=()=>Array.isArray(window.LEARNED_VOCABULARY)?window.LEARNED_VOCABULARY:[];
-const learnedWords=()=>[...new Set(learnedVocabulary().map(x=>norm(x.word||'')).filter(Boolean))];
+function masteryBaseline(){
+  const raw=window.MASTERY_BASELINE||{};
+  const list=(level,key)=>Array.isArray(raw?.[level]?.[key])?raw[level][key].map(norm).filter(Boolean):[];
+  const learned=new Set(['level0','level1','level2'].flatMap(level=>list(level,'learned')));
+  const mastered=new Set(['level0','level1','level2'].flatMap(level=>list(level,'mastered')));
+  const unmastered=new Set([...learned].filter(word=>!mastered.has(word)));
+  return {learned,mastered,unmastered};
+}
+const learnedWords=()=>[...new Set([
+  ...learnedVocabulary().map(x=>norm(x.word||'')).filter(Boolean),
+  ...masteryBaseline().learned
+])];
 const KNOWN_HISTORICAL_ERRORS={
   leaves:{count:3,lastDate:'2026-11-11'},delicious:{count:8,lastDate:'2026-11-11'},pretty:{count:3,lastDate:'2026-11-11'},model:{count:3,lastDate:'2026-11-11'},
   chorus:{count:12,lastDate:'2026-11-11'},whose:{count:14,lastDate:'2026-11-11'},exercise:{count:21,lastDate:'2026-11-11'},phone:{count:14,lastDate:'2026-11-10'},postcard:{count:13,lastDate:'2026-11-10'}
@@ -360,15 +371,24 @@ async function setupCloudSync(){
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(data));;queueCloudPush();}
 const DRAFT_KEY='phonics-helper-draft-v1';function childName(){return String(data.profile?.childName||'').trim();}function saveDraft(){const {target}=currentPlan();sessionStorage.setItem(DRAFT_KEY,JSON.stringify({date:target,errors:$('errorWords').value,khan:$('khanDone').value}));}function clearDraft(){sessionStorage.removeItem(DRAFT_KEY);}function renderDiagnostics(){const box=$('diagnosticContent');if(!box)return;const plans=allMasterPlans().map(x=>x.date).filter(Boolean).sort(),build=document.documentElement.dataset.build||'未知';box.textContent=`网页版本：${build}｜学习记录：${data.records.length} 天｜课程覆盖至：${plans.at(-1)||'未设置'}｜最近备份：${data.lastBackupAt||'尚未备份'}｜数据只保存在本机浏览。`;}
-const LEARNING_BASELINE={level0:{learned:94,mastered:94},level1:{learned:368,mastered:159},level2:{course:470,learned:137,mastered:25}};
+function learningBaselineCounts(){
+  const raw=window.MASTERY_BASELINE||{};
+  const count=(level,key,fallback)=>Array.isArray(raw?.[level]?.[key])?new Set(raw[level][key].map(norm).filter(Boolean)).size:fallback;
+  return {
+    level0:{learned:count('level0','learned',94),mastered:count('level0','mastered',94)},
+    level1:{learned:count('level1','learned',368),mastered:count('level1','mastered',159)},
+    level2:{course:470,learned:count('level2','learned',137),mastered:count('level2','mastered',25)}
+  };
+}
 function renderLearningBaseline(){
   const box=$('learningBaselineContent');if(!box)return;
+  const baseline=learningBaselineCounts();
   const rows=[
-    ['0级',LEARNING_BASELINE.level0.learned,LEARNING_BASELINE.level0.mastered],
-    ['1级',LEARNING_BASELINE.level1.learned,LEARNING_BASELINE.level1.mastered],
-    ['2级',LEARNING_BASELINE.level2.learned,LEARNING_BASELINE.level2.mastered]
+    ['0级',baseline.level0.learned,baseline.level0.mastered],
+    ['1级',baseline.level1.learned,baseline.level1.mastered],
+    ['2级',baseline.level2.learned,baseline.level2.mastered]
   ];
-  box.innerHTML='<div class="baseline-grid">'+rows.map(([name,learned,mastered])=>'<div><b>'+name+'</b><span>已学 '+learned+'｜已掌握 '+mastered+'｜重点复习 '+(learned-mastered)+'</span></div>').join('')+'</div><p class="help">2级课程共 470 词，当前尚未学习 333 词。此底账只影响复习分层，不改变课程新词的顺序、日期或重复词。</p>';
+  box.innerHTML='<div class="baseline-grid">'+rows.map(([name,learned,mastered])=>'<div><b>'+name+'</b><span>已学 '+learned+'｜已掌握 '+mastered+'｜重点复习 '+(learned-mastered)+'</span></div>').join('')+'</div><p class="help">复习规则：已掌握词低频抽查；已学但未掌握词更常出现。只要本次勾错，立刻按错词曲线在第 1、3、7、14、30 天复习，后续正确才会逐步降低频率。课程新词的顺序、日期和重复词均不会被此底账改动。</p>';
 }
 function speakWord(word){if(!('speechSynthesis' in window)){alert('当前浏览器不支持朗读。');return;}speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(word);utterance.lang='en-GB';utterance.rate=.82;speechSynthesis.speak(utterance);}
 function storyReader(text){return String(text).split(/(?<=[.!?])\s+/).filter(Boolean).map(sentence=>`<span class="story-sentence"><button type="button" class="speak-word" data-speak="${escapeHtml(sentence)}" aria-label="朗读这句话">🔊</button>${escapeHtml(sentence)}</span>`).join(' ');}
@@ -631,6 +651,13 @@ function buildPlan(targetDate){
   const urgentWords=new Set(urgent.map(([w])=>norm(w)));
   stableShuffle(historical.filter(([w])=>!urgentWords.has(norm(w))).map(([w])=>w),`历史错题-${targetDate}`).slice(0,12)
     .forEach(w=>add(w,`历史轮换复习`));
+  // 学习底账分层：已学未掌握词每天优先抽取少量；标为错误后，上方的错词曲线会优先覆盖它。
+  const baseline=masteryBaseline();
+  stableShuffle([...baseline.unmastered],`未掌握重点-${targetDate}`).slice(0,8)
+    .forEach(w=>add(w,'已学未掌握·重点复习'));
+  // 已掌握词只作低频抽查，避免挤占当天的错词、未掌握词和课程新词。
+  stableShuffle([...baseline.mastered],`已掌握抽查-${targetDate}`).slice(0,2)
+    .forEach(w=>add(w,'已掌握·低频巩固'));
   // 3. 已学但目前无错词，仍按曲线回归；这样“软件示掌握”也会被抽查。
   Object.entries(state).filter(([,s])=>s.nextDue<=targetDate&&s.errors===0)
     .sort((a,b)=>a[1].nextDue.localeCompare(b[1].nextDue)).forEach(([w])=>add(w,'已学曲线复习'));
