@@ -1,4 +1,4 @@
-const CACHE='phonics-helper-v6';
+const CACHE='phonics-helper-v7';
 const APP_SHELL=[
   './',
   './index.html',
