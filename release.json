@@ -1,11 +1,12 @@
 {
-  "build": "20261121-69",
+  "build": "20261121-71",
   "publishedAt": "2026-11-21T00:00:00+08:00",
-  "updated_at": "2026-11-21T14:05:00+08:00",
-  "message": "将下一组课程调整至11月22日，后续日期同步提前一天",
+  "updated_at": "2026-11-21T14:50:00+08:00",
+  "message": "从明天起按家长提供的333词顺序排课",
   "changes": [
-    "11月22日：food、feed、once、twice、how often",
-    "后续课程日期整体提前一天，单词顺序和重复词均不变",
-    "学习底账、错词曲线、复制清单和云端同步不受影响"
+    "今天已完成：food、feed、once、twice、how often",
+    "明天11月22日：never、ever、sometimes、listen to music、write an email",
+    "后续每天按333词原始顺序每5词一组，最后3词单独保留",
+    "不混入470词总表中已学或重复的词"
   ]
 }
