@@ -385,7 +385,7 @@ function save(){
   saveAutomaticBackup();
   localStorage.setItem(KEY,JSON.stringify(data));queueCloudPush();
 }
-const DRAFT_KEY='phonics-helper-draft-v1';function childName(){return String(data.profile?.childName||'').trim();}function saveDraft(){const {target}=currentPlan();sessionStorage.setItem(DRAFT_KEY,JSON.stringify({date:target,errors:$('errorWords').value,khan:$('khanDone').value}));}function clearDraft(){sessionStorage.removeItem(DRAFT_KEY);}function renderDiagnostics(){const box=$('diagnosticContent');if(!box)return;const plans=allMasterPlans().map(x=>x.date).filter(Boolean).sort(),build=document.documentElement.dataset.build||'未知';box.textContent=`网页版本：${build}｜学习记录：${data.records.length} 天｜课程覆盖至：${plans.at(-1)||'未设置'}｜手动导出：${data.lastBackupAt||'尚未导出'}｜本机自动保留：${data.autoBackupCount||0} 份。`;}
+const DRAFT_KEY='phonics-helper-draft-v1';function childName(){return String(data.profile?.childName||'').trim();}function saveDraft(){const {target}=currentPlan();sessionStorage.setItem(DRAFT_KEY,JSON.stringify({date:target,errors:$('errorWords').value,khan:$('khanDone').value,letterErrors:letterErrorsFromDom()}));}function clearDraft(){sessionStorage.removeItem(DRAFT_KEY);}function renderDiagnostics(){const box=$('diagnosticContent');if(!box)return;const plans=allMasterPlans().map(x=>x.date).filter(Boolean).sort(),build=document.documentElement.dataset.build||'未知';box.textContent=`网页版本：${build}｜学习记录：${data.records.length} 天｜课程覆盖至：${plans.at(-1)||'未设置'}｜手动导出：${data.lastBackupAt||'尚未导出'}｜本机自动保留：${data.autoBackupCount||0} 份。`;}
 function learningBaselineCounts(){
   const raw=window.MASTERY_BASELINE||{};
   const count=(level,key,fallback)=>Array.isArray(raw?.[level]?.[key])?new Set(raw[level][key].map(norm).filter(Boolean)).size:fallback;
@@ -693,6 +693,26 @@ function weakness(){
   lastSeven.forEach(r=>(r.errors||[]).forEach(w=>ruleOf(w).forEach(id=>recent[id]=(recent[id]||0)+1)));
   return PATTERNS.map(p=>({...p,count:counts[p.id]||0,recent:recent[p.id]||0,priority:(recent[p.id]||0)*3+(counts[p.id]||0)})).filter(p=>p.count).sort((a,b)=>b.priority-a.priority)
 }
+const GRAPHEME_SOUNDS={ph:'/f/',sh:'/ʃ/',ch:'/tʃ/',th:'/θ/ 或 /ð/',ck:'/k/',ng:'/ŋ/',ee:'/iː/',ea:'/iː/（常见）',oa:'/əʊ/',ai:'/eɪ/',ay:'/eɪ/',igh:'/aɪ/',oo:'/uː/ 或 /ʊ/',ow:'/aʊ/ 或 /əʊ/',ou:'/aʊ/ 或 /əʊ/',oi:'/ɔɪ/',oy:'/ɔɪ/',ar:'/ɑː/',or:'/ɔː/',er:'/ɜː/',ir:'/ɜː/',ur:'/ɜː/'};
+function letterErrorAnalysis(){
+  const charCounts={},segmentCounts={},examples={},wholeCounts={};let spaceCount=0,total=0;
+  data.records.forEach(record=>Object.entries(record.letterErrors||{}).forEach(([rawWord,rawIndices])=>{
+    const word=norm(rawWord),chars=[...word],indices=[...new Set((Array.isArray(rawIndices)?rawIndices:[]).map(Number).filter(Number.isInteger))];
+    if(indices.includes(-1)){wholeCounts[word]=(wholeCounts[word]||0)+1;total++;return;}
+    const selected=indices.filter(index=>index>=0&&index<chars.length).sort((x,y)=>x-y);if(!selected.length)return;total++;
+    selected.forEach(index=>{if(/\s/.test(chars[index]))spaceCount++;else charCounts[chars[index].toLowerCase()]=(charCounts[chars[index].toLowerCase()]||0)+1;});
+    let run=[];const flush=()=>{if(!run.length)return;const part=run.map(index=>chars[index]).join('').toLowerCase();if(part){segmentCounts[part]=(segmentCounts[part]||0)+1;(examples[part]??=[]).push(word);}run=[];};
+    selected.forEach((index,pos)=>{if(/\s/.test(chars[index])){flush();return;}if(run.length&&index!==run.at(-1)+1)flush();run.push(index);if(pos===selected.length-1)flush();});flush();
+  }));
+  return {total,spaceCount,topSegments:Object.entries(segmentCounts).sort((a,b)=>b[1]-a[1]||b[0].length-a[0].length).slice(0,6).map(([part,count])=>({part,count,example:(examples[part]||[])[0],sound:GRAPHEME_SOUNDS[part]||''})),topLetters:Object.entries(charCounts).sort((a,b)=>b[1]-a[1]).slice(0,6),topWhole:Object.entries(wholeCounts).sort((a,b)=>b[1]-a[1]).slice(0,4)};
+}
+function renderLetterErrorAnalysis(){
+  const report=letterErrorAnalysis();if(!report.total)return '';
+  const metas=allMetas(),segments=report.topSegments.map(item=>{const ipa=itemFor(item.example,metas).ipa||'',sound=item.sound?'常见读音 '+item.sound:(ipa?'所在单词音标 '+ipa:'请结合单词音标朗读');return '<li><b>'+escapeHtml(item.part)+'</b>：'+item.count+' 次，例词 '+escapeHtml(item.example)+'；'+escapeHtml(sound)+'</li>';}).join('');
+  const letters=report.topLetters.length?report.topLetters.map(([letter,count])=>escapeHtml(letter)+'（'+count+'次）').join('、'):'暂无',spaces=report.spaceCount?'短语空格标记 '+report.spaceCount+' 次。':'',wholes=report.topWhole.length?'整词不会：'+report.topWhole.map(([word,count])=>escapeHtml(word)+'（'+count+'次）').join('、')+'。':'';
+  return '<section class="letter-analysis"><h3>按您点选位置的错误分析</h3><p>已记录 '+report.total+' 次具体位置。只统计您实际点出的字母或空格，不会自行猜测错误原因。</p>'+(segments?'<p><b>常错字母/组合与音标提示：</b></p><ul>'+segments+'</ul>':'')+'<p><b>常错单个字母：</b>'+letters+'。'+spaces+wholes+'</p><p class="help">英文“字母”和“发音”不总是一一对应；没有明确常见读音时，系统会给出该词完整音标，可点喇叭核对发音。</p></section>';
+}
+
 function khanRecommendation(ws,focus=''){const t=data.tests||{}; const has=t.combo!==''&&t.combo!==undefined; const ruleFail=(has&&+t.combo<8)||(+t.decode<8&&t.decode!==undefined&&t.decode!=='')||(+t.magic<3&&t.magic!==undefined&&t.magic!=='')||(+t.syllable<4&&t.syllable!==undefined&&t.syllable!=='');
   const focusIds=planRuleIds(focus); const focusRule=PATTERNS.find(p=>focusIds.includes(p.id));
   const top=ws.find(w=>focusIds.includes(w.id)&&w.recent>0)||ws[0]||focusRule;
@@ -913,7 +933,8 @@ function render(){const {target,list}=currentPlan(),next=nextPlan(); const daily
   const metas=allMetas();$('dictationList').innerHTML=words.map((x,i)=>{const progress=state[norm(x.word)],detail=itemFor(x.word,metas);const reason=(x.tag||'').includes('错词')?'因上次默写出错，需要优先复习':(x.tag||'').includes('新词')?'新学习的单词，首次进入默写':'按间隔复习曲线抽取';const status=progress?`${reason}｜已错 ${progress.errors} 次；下次复习 ${progress.nextDue}`:`${reason}｜首次出现或基础抽查`;return `<div class="word"><b>${i+1}.</b> ${highlightEnglish(x.word)} <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><span class="tag">${escapeHtml(x.tag||'')}</span><small class="word-detail">${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small class="word-status">${escapeHtml(status)}</small></div>`}).join('')||(next.awaitingCorrection?'<p>请先勾选今天写错的单词并点击“保存错词并生成明天复习”。保存后，系统才会根据今天的结果、历史错词和记忆曲线生成下一次清单。</p>':'<p>暂时没有需要默写的单词。</p>');
   const health=planHealth(next.target,words);
   $('planNote').textContent=next.awaitingCorrection?'明天固定的 5 个新词可在上方“今天的新词”中预习；复习词必须等今天批改保存后才会定稿。':(!health.ok?`清单校验未通过：缺少 ${health.missing.join('、')||'固定新词'}。请不要使用此清单，并联系维护者。`:`基础清单固定 40 个（含当天课程新词）；家长新增词会在此基础上额外追加，本次共 ${words.length} 个。`);
-  $('weaknessContent').innerHTML=ws.length?ws.map(w=>`<div class="weak"><b>${w.name}<br><span class="score-bad">累错误 ${w.count} 次；近7次记录 ${w.recent} 次</span></b><span>${w.why}<br><small>建议检验：${w.test}</small></span></div>`).join(''):'<p>还没有录入错词。录后会按字母组合、元音、音节、语、词尾和不规则词形自动分析</p>';
+  const detailedErrorHtml=renderLetterErrorAnalysis();
+  $('weaknessContent').innerHTML=(ws.length?ws.map(w=>`<div class="weak"><b>${w.name}<br><span class="score-bad">累错误 ${w.count} 次；近7次记录 ${w.recent} 次</span></b><span>${w.why}<br><small>建议检验：${w.test}</small></span></div>`).join(''):'<p>还没有录入错词。录后会按字母组合、元音、音节、短语、词尾和不规则词形自动分析。</p>')+detailedErrorHtml;
   $('khanContent').innerHTML=`<p><b>${rec.title}</b></p><ol class="rule-list"><li>点 <b>Reading</b> → 右上角选 <b>1st Grade</b>。</li><li>找 <b>${rec.course}</b></li><li>今天点 <b>${rec.card}</b>。</li><li>${rec.text}</li><li>完成后让孩子：“我今天学的是 ______，它常读 ______，例如 ______。”说不出就不掌握。</li><li><b>再加 5 分钟迁移</b>Reading Fluency 读一小段，或每 2 次 Books / Early Readers。让孩子在物里圈出今天的组合，读出含它一句话；图书里遇到不规则词不来考拼读规则。</li></ol>`;
   const t=data.tests||{}; const rows=[['字母组合认',t.combo,10,8],['陌生词读写',t.decode,10,8],['Magic e 对比',t.magic,4,3],['多音节拆分',t.syllable,5,4]]; $('checkContent').innerHTML='<p><b>系统根据当前最的薄弱项生成：</b></p><ol class="rule-list">'+autoChecks(ws).map(x=>`<li>${x}</li>`).join('')+'</ol><p><b>您填写过的检验结果：</b></p><ul class="rule-list">'+rows.map(([name,score,total,pass])=>`<li><b>${name}</b>：${score??'未填'} / ${total}，${score!==undefined&&score!==''?(+score>=pass?'<span class="score-good">达到规则掌握线</span>':'<span class="score-bad">未达标：回到 Main/Basic + 陌生词纸笔练习</span>'):'可不填；系统已按错词自动整。'}</li>`).join('')+'</ul>';
   const totalErrors=data.records.reduce((n,r)=>n+r.errors.length,0);$('weekendContent').innerHTML=`<p>已记录 ${data.records.length} 天，累错词次数 ${totalErrors}。周末从所错误词中抽20个，再从“已掌握”抽10个，并做一次本页的规则检验。</p><ul class="rule-list"><li><b>如果旧词会写、陌生词不行：</b>纸笔习要改为规则卡 + 陌生词读写；汗做 Main/Basic，不刷 Practice。</li><li><b>如果陌生词能读写、旧词仍错：</b>规律已会，继续按次日/第3天/第7天默写，不增加新规则。</li><li><b>如果多音节、词组空格常错：</b>每题默写前先口头“拍音节 / 说词块”，不要直接整词硬写。</li></ul>`;
@@ -956,13 +977,14 @@ function saveRecord(){
   const {target:date,list:dictationItems}=currentPlan(),master=masterPlanFor(date),nextMaster=masterPlanFor(plus(date,1));
   // 新词不再由家长手输始终以总表为准；家长每天只录批改后的错误词。
   const newItems=master?.words||[],errorItems=parseEntries($('errorWords').value),nextNewItems=nextMaster?.words||[];
+  const letterErrors=letterErrorsFromDom();
   const newWords=newItems.map(x=>x.word),errors=errorItems.map(x=>x.word),nextNewWords=nextNewItems.map(x=>x.word);
   if(!dictationItems.length&&!newWords.length&&!errors.length){alert('当前没有可保存的默写词，请先确认学习日期。');return}
   // 当天打印过的清单就是当天实默写池；这样扫码勾错或手工录后，所有正确词都会进入下一轮线。
   data.printedPlans[date]=cloneItems(dictationItems);
   const reviewedWords=dictationItems.map(x=>norm(x.word));
   data.records=data.records.filter(r=>r.date!==date);
-  const record={date,newWords,errors,nextNewWords,newItems,errorItems,nextNewItems,dictationItems:cloneItems(dictationItems),reviewedWords:reviewedWords.length?reviewedWords:newWords,khan:$('khanDone').value,masterFocus:master?.focus||''};
+  const record={date,newWords,errors,letterErrors,nextNewWords,newItems,errorItems,nextNewItems,dictationItems:cloneItems(dictationItems),reviewedWords:reviewedWords.length?reviewedWords:newWords,khan:$('khanDone').value,masterFocus:master?.focus||''};
   data.records.push(record);data.records.sort((a,b)=>a.date.localeCompare(b.date));invalidateUncorrectedFuturePlans(date);rebuildWordState();
   // 保存下一次清单；明天录入批改结果后，系统就知道哪些词实际参与过默写。
   record.nextPlan=buildPlan(plus(date,1)).list;
@@ -973,66 +995,23 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function highlightEnglish(word){return escapeHtml(word).replace(/[aeiou]/gi,letter=>`<em class="vowel-mark">${letter}</em>`);}
 function highlightIpa(ipa){return escapeHtml(ipa).replace(/[iɪeɛæɑɒɔʊuʌəɜɐɚ]/g,letter=>`<em class="vowel-mark">${letter}</em>`);}
 function correctionWords(){return [...document.querySelectorAll('#correctionWords input:checked')].map(x=>norm(x.value));}
-function automaticCorrectionStatus(word,date,existing){
-  const key=norm(word),errors=new Set((existing?.errors||[]).map(norm));
-  if(errors.has(key))return 'wrong';
-  const count=allErrorCounts()[key]||0,state=rebuildWordState()[key];
-  // 错过两次以上，或尚处在错词曲线里，才标为“不熟”；其余最近一次批改正确则为“会了”。
-  if(count>=2||(state?.errors>0&&state.lastReviewed!==date))return 'unfamiliar';
-  return 'known';
-}
-function correctionDates(){
-  const dates=allMasterPlans().map(x=>x.date).filter(Boolean).concat(data.records.map(x=>x.date),Object.keys(HISTORICAL_DICTATION_ITEMS||{}));
-  const first=dates.sort()[0]||realToday(),result=[];
-  for(let day=first;day<=realToday();day=plus(day,1))result.push(day);
-  const tomorrow=plus(realToday(),1),todayCompleted=data.records.some(r=>r.date===realToday()&&!r.seed);
-  if(todayCompleted&&planForDate(tomorrow).length)result.push(tomorrow);
-  return [...new Set([...result,selectedDate||realToday()])].sort((a,b)=>b.localeCompare(a));
-}
-function latestErrorDate(word){
-  const target=norm(word),recordDate=data.records.filter(r=>(r.errors||[]).some(w=>norm(w)===target)).map(r=>r.date).sort().at(-1)||'';
-  const historical=historicalErrors()[target]?.lastDate||'';
-  return recordDate>historical?recordDate:historical;
-}
-function sortCorrectionItems(items){
-  const mode=$('correctionSort')?.value||'original',counts=allErrorCounts();
-  if(mode==='errors')return [...items].sort((a,b)=>(counts[norm(b.word)]||0)-(counts[norm(a.word)]||0)||String(a.word).localeCompare(String(b.word)));
-  if(mode==='recent')return [...items].sort((a,b)=>latestErrorDate(b.word).localeCompare(latestErrorDate(a.word))||(counts[norm(b.word)]||0)-(counts[norm(a.word)]||0));
-  return items;
-}
-function syncCheckedErrors(){
-  const checked=correctionWords();
-  const {list}=currentPlan();
-  const extras=parseEntries($('errorWords').value).filter(x=>!list.some(y=>norm(y.word)===x.word));
-  $('errorWords').value=[...checked,...extras.map(x=>x.word)].join('\n');saveDraft();
-}
+function draftForDate(date){try{const draft=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||'null');return draft?.date===date?draft:null;}catch{return null;}}
+function normalizeLetterErrors(value){const result={};if(!value||typeof value!=='object')return result;Object.entries(value).forEach(([word,indices])=>{const clean=[...new Set((Array.isArray(indices)?indices:[]).map(Number).filter(Number.isInteger))];if(clean.length)result[norm(word)]=clean;});return result;}
+function letterErrorsFromDom(){const result={};document.querySelectorAll('#correctionWords [data-letter-all]').forEach(all=>{const word=norm(all.dataset.letterAll);if(all.classList.contains('is-wrong')){result[word]=[-1];return;}const indices=[...document.querySelectorAll('#correctionWords [data-letter-word]')].filter(button=>norm(button.dataset.letterWord)===word&&button.classList.contains('is-wrong')).map(button=>+button.dataset.letterIndex).filter(Number.isInteger);if(indices.length)result[word]=[...new Set(indices)];});return result;}
+function letterPickerHtml(word,indices,previewOnly){const selected=new Set(indices||[]),all=selected.has(-1),disabled=previewOnly?'disabled':'',chars=[...word];const chips=chars.map((character,index)=>{const space=/\s/.test(character),active=all||selected.has(index);return '<button type="button" class="letter-chip '+(space?'space-chip ':'')+(active?'is-wrong':'')+'" data-letter-word="'+escapeHtml(norm(word))+'" data-letter-index="'+index+'" '+disabled+' aria-pressed="'+active+'">'+(space?'空格':escapeHtml(character))+'</button>';}).join('');return '<div class="letter-picker"><span class="letter-picker-title">点孩子写错、漏写或顺序错误的字母：</span><span class="letter-chips">'+chips+'</span><button type="button" class="letter-all '+(all?'is-wrong':'')+'" data-letter-all="'+escapeHtml(norm(word))+'" '+disabled+'>整词不会</button></div>';}
+function setWordLetterSelection(word,indices){const key=norm(word),selected=new Set(indices||[]),allButton=[...document.querySelectorAll('#correctionWords [data-letter-all]')].find(button=>norm(button.dataset.letterAll)===key);if(!allButton)return;const whole=selected.has(-1);allButton.classList.toggle('is-wrong',whole);document.querySelectorAll('#correctionWords [data-letter-word]').forEach(button=>{if(norm(button.dataset.letterWord)!==key)return;button.classList.toggle('is-wrong',whole||selected.has(+button.dataset.letterIndex));});const input=[...document.querySelectorAll('#correctionWords input[data-correction-word]')].find(item=>norm(item.dataset.correctionWord)===key);if(input)input.checked=whole||selected.size>0;}
+function automaticCorrectionStatus(word,date,existing){const key=norm(word),errors=new Set((existing?.errors||[]).map(norm));if(errors.has(key))return 'wrong';const count=allErrorCounts()[key]||0,state=rebuildWordState()[key];if(count>=2||(state?.errors>0&&state.lastReviewed!==date))return 'unfamiliar';return 'known';}
+function updateWordErrorState(word,date,existing){const key=norm(word),hasError=!!letterErrorsFromDom()[key]?.length,input=[...document.querySelectorAll('#correctionWords input[data-correction-word]')].find(item=>norm(item.dataset.correctionWord)===key);if(input)input.checked=hasError;const status=hasError?'wrong':automaticCorrectionStatus(key,date,existing),card=input?.closest('.correction-choice');card?.setAttribute('data-status',status);const badge=card?.querySelector('.auto-status');if(badge){badge.className='auto-status auto-status-'+status;badge.textContent={known:'会了',unfamiliar:'不熟',wrong:'错了'}[status];}}
+function syncCheckedErrors(){const checked=correctionWords(),{list}=currentPlan(),extras=parseEntries($('errorWords').value).filter(x=>!list.some(y=>norm(y.word)===x.word));$('errorWords').value=[...checked,...extras.map(x=>x.word)].join('\n');saveDraft();}
 function renderCorrectionPicker(){
-  // 可选择过去任意一天补批改；日期由同一份默写清单驱动。
-  const {target:date,list:planned}=currentPlan(), master=masterPlanFor(date);
-  $('studyDate').value=date;
-  const picker=$('correctionDatePicker');
-  const previewOnly=date>realToday();
-  picker.innerHTML=correctionDates().map(day=>`<option value="${day}">${dateLabel(day)}${day>realToday()?'（明天待默写，仅查看）':(data.records.some(r=>r.date===day&&!r.seed)?'（已批改，可修改）':'（可补批改）')}</option>`).join('');
-  picker.value=date;
-  const list=sortCorrectionItems(planned.length?planned:(master?.words||[]).map(x=>({...x,tag:'当天新词'})));
-  const existing=data.records.find(record=>record.date===date);
-  const selected=new Set(parseEntries($('errorWords').value).map(x=>x.word));
-  $('correctionDate').textContent=date;
-  const counts=allErrorCounts(),metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{
-    const detail=itemFor(x.word,metas),count=counts[norm(x.word)]||0,last=latestErrorDate(x.word),word=norm(x.word);
-    const status=selected.has(word)?'wrong':automaticCorrectionStatus(word,date,existing);
-    const statusText={known:'会了',unfamiliar:'不熟',wrong:'错了'}[status];
-    return `<label class="correction-choice ${previewOnly?'preview-only':''}" data-status="${status}"><input data-correction-word="${escapeHtml(word)}" type="checkbox" value="${escapeHtml(x.word)}" ${status==='wrong'?'checked':''} ${previewOnly?'disabled':''}><span>${i+1}. <b>${highlightEnglish(x.word)}</b> <span class="auto-status auto-status-${status}">${statusText}</span> <button type="button" class="speak-word" data-speak="${escapeHtml(x.word)}" aria-label="朗读 ${escapeHtml(x.word)}">🔊</button><small>${highlightIpa(detail.ipa||'请按教材核对音标')} ｜ ${escapeHtml(detail.gloss||'请按教材核对中文')}</small><small>${escapeHtml(x.tag||'')}｜历史错误 ${count} 次${last?`｜最近 ${last}`:''}</small></span></label>`;
-  }).join(''):'<p>这一天暂时没有可供批改的默写词。</p>';
-  const saveButton=$('saveAndPlan');saveButton.disabled=previewOnly;
-  if(previewOnly){$('lateCorrectionHint').textContent='正在查看系统生成的明天默写词：仅供预习、朗读和复制，明天默写后再回来批改。';}
-  document.querySelectorAll('#correctionWords input:not(:disabled)').forEach(input=>input.onchange=()=>{
-    const status=input.checked?'wrong':automaticCorrectionStatus(input.dataset.correctionWord,date,existing);
-    input.closest('.correction-choice')?.setAttribute('data-status',status);
-    const badge=input.closest('.correction-choice')?.querySelector('.auto-status');
-    if(badge){badge.className='auto-status auto-status-'+status;badge.textContent={known:'会了',unfamiliar:'不熟',wrong:'错了'}[status];}
-    syncCheckedErrors();
-  });
+  const {target:date,list:planned}=currentPlan(),master=masterPlanFor(date);$('studyDate').value=date;const picker=$('correctionDatePicker'),previewOnly=date>realToday();
+  picker.innerHTML=correctionDates().map(day=>'<option value="'+day+'">'+dateLabel(day)+(day>realToday()?'（明天待默写，仅查看）':(data.records.some(r=>r.date===day&&!r.seed)?'（已批改，可修改）':'（可补批改）'))+'</option>').join('');picker.value=date;
+  const list=sortCorrectionItems(planned.length?planned:(master?.words||[]).map(x=>({...x,tag:'当天新词'}))),existing=data.records.find(record=>record.date===date),draft=draftForDate(date),savedDetails=normalizeLetterErrors(existing?.letterErrors||draft?.letterErrors),selected=new Set(parseEntries($('errorWords').value).map(x=>x.word));$('correctionDate').textContent=date;
+  const counts=allErrorCounts(),metas=allMetas();$('correctionWords').innerHTML=list.length?list.map((x,i)=>{const detail=itemFor(x.word,metas),count=counts[norm(x.word)]||0,last=latestErrorDate(x.word),word=norm(x.word),indices=savedDetails[word]||(selected.has(word)?[-1]:[]),status=indices.length?'wrong':automaticCorrectionStatus(word,date,existing),statusText={known:'会了',unfamiliar:'不熟',wrong:'错了'}[status];return '<label class="correction-choice '+(previewOnly?'preview-only':'')+'" data-status="'+status+'"><input data-correction-word="'+escapeHtml(word)+'" type="checkbox" value="'+escapeHtml(x.word)+'" '+(indices.length?'checked':'')+' '+(previewOnly?'disabled':'')+' aria-label="'+escapeHtml(x.word)+' 整词错误"><span>'+ (i+1)+'. <b>'+highlightEnglish(x.word)+'</b> <span class="auto-status auto-status-'+status+'">'+statusText+'</span> <button type="button" class="speak-word" data-speak="'+escapeHtml(x.word)+'" aria-label="朗读 '+escapeHtml(x.word)+'">🔊</button><small>'+highlightIpa(detail.ipa||'请按教材核对音标')+' ｜ '+escapeHtml(detail.gloss||'请按教材核对中文')+'</small><small>'+escapeHtml(x.tag||'')+'｜历史错误 '+count+' 次'+(last?'｜最近 '+last:'')+'</small>'+letterPickerHtml(x.word,indices,previewOnly)+'</span></label>';}).join(''):'<p>这一天暂时没有可供批改的默写词。</p>';
+  $('saveAndPlan').disabled=previewOnly;if(previewOnly)$('lateCorrectionHint').textContent='正在查看系统生成的明天默写词：仅供预习、朗读和复制，明天默写后再回来批改。';
+  document.querySelectorAll('#correctionWords [data-letter-word]').forEach(button=>button.onclick=event=>{event.preventDefault();event.stopPropagation();const word=button.dataset.letterWord,current=letterErrorsFromDom()[norm(word)]||[],next=new Set(current.includes(-1)?[]:current),index=+button.dataset.letterIndex;next.has(index)?next.delete(index):next.add(index);setWordLetterSelection(word,[...next]);updateWordErrorState(word,date,existing);syncCheckedErrors();});
+  document.querySelectorAll('#correctionWords [data-letter-all]').forEach(button=>button.onclick=event=>{event.preventDefault();event.stopPropagation();const word=button.dataset.letterAll;setWordLetterSelection(word,button.classList.contains('is-wrong')?[]:[-1]);updateWordErrorState(word,date,existing);syncCheckedErrors();});
+  document.querySelectorAll('#correctionWords input:not(:disabled)').forEach(input=>input.onchange=()=>{const word=input.dataset.correctionWord;setWordLetterSelection(word,input.checked?[-1]:[]);updateWordErrorState(word,date,existing);syncCheckedErrors();});
 }
 async function enrichCustomEntry(entry,addedDate=''){
   const base=itemFor(entry.word,allMetas());
@@ -1122,8 +1101,8 @@ $('errorWords').onchange=()=>{saveDraft();renderCorrectionPicker();};$('khanDone
 $('addCustomWords').onclick=addCustomWords;$('quickImportPlan').onclick=()=>$('importPlan').click();document.addEventListener('click',e=>{const del=e.target.closest('[data-custom-delete]');if(del){const i=+del.dataset.customDelete;if(confirm('确定删除这个家长新增词吗？')){const word=data.customWords[i]?.word;data.customWords.splice(i,1);removeParentAddedLedger(word);save();fill();}}});document.addEventListener('change',e=>{if(e.target.matches('[data-custom-date]'))saveCustomWordDate(+e.target.dataset.customDate);});document.addEventListener('click',e=>{const saveBtn=e.target.closest('[data-course-save]'),deleteBtn=e.target.closest('[data-course-delete]');if(saveBtn)applyCourseEdit(+saveBtn.dataset.courseSave);if(deleteBtn){const i=+deleteBtn.dataset.courseDelete;if(confirm('确定删除这一天家长新增的课程吗？')){data.curriculumPlan.splice(i,1);invalidateUncorrectedFuturePlans(realToday());save();fill();showSaveToast('已删除该日期的新增课程。');}}});
 $('childName').onchange=()=>{data.profile={...(data.profile||{}),childName:$('childName').value.trim()};save();};$('ruleExceptions').onchange=()=>{data.ruleExceptions=parseLines($('ruleExceptions').value);save();render();};document.addEventListener('click',e=>{const button=e.target.closest('[data-speak]');if(button)speakWord(button.dataset.speak);});
 $('copyPasteWords').onclick=copyPasteWords;$('copyNextPasteWords').onclick=copyNextPasteWords;
-$('selectAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=true);syncCheckedErrors();};
-$('clearAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords input').forEach(x=>x.checked=false);syncCheckedErrors();};
+$('selectAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords [data-letter-all]').forEach(button=>{setWordLetterSelection(button.dataset.letterAll,[-1]);updateWordErrorState(button.dataset.letterAll,currentPlan().target,data.records.find(r=>r.date===currentPlan().target));});syncCheckedErrors();};
+$('clearAllErrors').onclick=()=>{document.querySelectorAll('#correctionWords [data-letter-all]').forEach(button=>{setWordLetterSelection(button.dataset.letterAll,[]);updateWordErrorState(button.dataset.letterAll,currentPlan().target,data.records.find(r=>r.date===currentPlan().target));});syncCheckedErrors();};
 $('exportWeeklyReport').onclick=()=>{const weekly=weeklyReport();downloadDoc(`英语拼读周报_${iso(new Date())}.doc`,worksheetHtml('英语读周报',weekly.html));};
 $('exportData').onclick=()=>{data.lastBackupAt=new Date().toISOString();save();const backup={...data,backupVersion:3,appName:'英语拼每日打印助手',exportedAt:data.lastBackupAt};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));a.download=`英语拼读巩固备份_${childName()||'未命名'}_${iso(today)}.json`;a.click();URL.revokeObjectURL(a.href)};
 async function enrichCurriculumPlans(plans){
