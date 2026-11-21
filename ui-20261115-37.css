@@ -65,3 +65,37 @@
 .auto-status-unfamiliar{background:#fff0c8;color:#8a5a00}
 .auto-status-wrong{background:#fee0dc;color:#a6362b}
 @media(max-width:640px){.auto-status{margin-left:4px}.correction-choice{align-items:flex-start}}
+
+
+/* 2026-11-21：按错字母批改，优先保证手机点击和阅读 */
+.correction-box{padding:28px 30px}
+.correction-box h3{font-size:2rem}
+.correction-box>.help{font-size:1.08rem;line-height:1.75}
+.correction-choice{padding:18px 20px;gap:16px}
+.correction-choice>input{width:24px;height:24px;flex:0 0 auto;margin-top:7px}
+.correction-choice>span{font-size:1.28rem;line-height:1.65}
+.correction-choice b{font-size:1.42rem}
+.correction-choice small{font-size:1rem;line-height:1.55}
+.letter-picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding:12px;border:1px dashed #a8d8ca;border-radius:12px;background:#fafffd}
+.letter-picker-title{width:100%;font-size:1rem;font-weight:800;color:#245f51}
+.letter-chips{display:flex;gap:7px;flex-wrap:wrap}
+.letter-chip,.letter-all{min-width:42px;min-height:46px;padding:5px 10px;border:1px solid #9ecfc0;border-radius:10px;background:#fff;color:#164f43;font:inherit;font-size:1.22rem;font-weight:800;cursor:pointer}
+.letter-chip.space-chip{min-width:62px;font-size:.96rem;color:#50776d}
+.letter-chip.is-wrong,.letter-all.is-wrong{background:#ffe1dc;border-color:#d46455;color:#992f24}
+.letter-all{margin-left:auto;background:#fff5ee;border-color:#e0a16d;color:#9a551b;font-size:1rem}
+.letter-analysis{margin-top:18px;padding:18px;border:1px solid #a8d8ca;border-radius:14px;background:#f7fffb}
+.letter-analysis h3{margin:0 0 8px;color:#145a4c;font-size:1.25rem}
+.letter-analysis ul{margin:8px 0;padding-left:1.25rem;line-height:1.75}
+@media(max-width:640px){
+  .correction-box{padding:22px 16px}
+  .correction-box h3{font-size:1.55rem}
+  .correction-choice{padding:16px 13px}
+  .correction-choice>span{font-size:1.17rem}
+  .correction-choice b{font-size:1.32rem}
+  .correction-choice small{font-size:.95rem}
+  .letter-picker{padding:11px 9px;gap:8px}
+  .letter-chips{gap:6px}
+  .letter-chip,.letter-all{min-width:40px;min-height:45px;padding:4px 8px;font-size:1.15rem}
+  .letter-chip.space-chip{min-width:57px;font-size:.9rem}
+  .letter-all{margin-left:0;width:100%;font-size:1.05rem}
+}
