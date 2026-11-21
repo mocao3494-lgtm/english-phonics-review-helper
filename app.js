@@ -921,7 +921,7 @@ async function copyNextPasteWords(){return copyTextFrom('nextPasteWordList','请
 function render(){const {target,list}=currentPlan(),next=nextPlan(); const dailyRecord=currentDailyRecord(target,list); const last=data.records.at(-1); const ws=weakness(); const targetFocus=masterPlanFor(target)?.focus||''; const rec=khanRecommendation(ws,targetFocus);
   renderCorrectionPicker();renderPendingCorrections();renderPasteList();renderCurriculumManager();renderCustomWordsManager();renderStudyShiftHint();renderLearningBaseline();
   ['plan'].forEach(id=>$(id).classList.remove('hidden'));
-  if(last||Object.values(data.tests||{}).some(x=>x!=='')){['analysis','khanPlan','checkPlan','weekend','history','progress','weekReport'].forEach(id=>$(id).classList.remove('hidden'));}
+  if(last||Object.values(data.tests||{}).some(x=>x!=='')){['analysis','checkPlan','weekend','history','progress','weekReport'].forEach(id=>$(id).classList.remove('hidden'));}
   $('nextDate').textContent='（'+next.target+'）';
   const late=target<realToday();
   $('lateCorrectionHint').textContent=late?`正在补录 ${dateLabel(target)}：保存后会按补录的错词重新生成 ${dateLabel(plus(target,1))} 起尚未批改的复习清单。`:'';
@@ -935,7 +935,7 @@ function render(){const {target,list}=currentPlan(),next=nextPlan(); const daily
   $('planNote').textContent=next.awaitingCorrection?'明天固定的 5 个新词可在上方“今天的新词”中预习；复习词必须等今天批改保存后才会定稿。':(!health.ok?`清单校验未通过：缺少 ${health.missing.join('、')||'固定新词'}。请不要使用此清单，并联系维护者。`:`基础清单固定 40 个（含当天课程新词）；家长新增词会在此基础上额外追加，本次共 ${words.length} 个。`);
   const detailedErrorHtml=renderLetterErrorAnalysis();
   $('weaknessContent').innerHTML=(ws.length?ws.map(w=>`<div class="weak"><b>${w.name}<br><span class="score-bad">累错误 ${w.count} 次；近7次记录 ${w.recent} 次</span></b><span>${w.why}<br><small>建议检验：${w.test}</small></span></div>`).join(''):'<p>还没有录入错词。录后会按字母组合、元音、音节、短语、词尾和不规则词形自动分析。</p>')+detailedErrorHtml;
-  $('khanContent').innerHTML=`<p><b>${rec.title}</b></p><ol class="rule-list"><li>点 <b>Reading</b> → 右上角选 <b>1st Grade</b>。</li><li>找 <b>${rec.course}</b></li><li>今天点 <b>${rec.card}</b>。</li><li>${rec.text}</li><li>完成后让孩子：“我今天学的是 ______，它常读 ______，例如 ______。”说不出就不掌握。</li><li><b>再加 5 分钟迁移</b>Reading Fluency 读一小段，或每 2 次 Books / Early Readers。让孩子在物里圈出今天的组合，读出含它一句话；图书里遇到不规则词不来考拼读规则。</li></ol>`;
+
   const t=data.tests||{}; const rows=[['字母组合认',t.combo,10,8],['陌生词读写',t.decode,10,8],['Magic e 对比',t.magic,4,3],['多音节拆分',t.syllable,5,4]]; $('checkContent').innerHTML='<p><b>系统根据当前最的薄弱项生成：</b></p><ol class="rule-list">'+autoChecks(ws).map(x=>`<li>${x}</li>`).join('')+'</ol><p><b>您填写过的检验结果：</b></p><ul class="rule-list">'+rows.map(([name,score,total,pass])=>`<li><b>${name}</b>：${score??'未填'} / ${total}，${score!==undefined&&score!==''?(+score>=pass?'<span class="score-good">达到规则掌握线</span>':'<span class="score-bad">未达标：回到 Main/Basic + 陌生词纸笔练习</span>'):'可不填；系统已按错词自动整。'}</li>`).join('')+'</ul>';
   const totalErrors=data.records.reduce((n,r)=>n+r.errors.length,0);$('weekendContent').innerHTML=`<p>已记录 ${data.records.length} 天，累错词次数 ${totalErrors}。周末从所错误词中抽20个，再从“已掌握”抽10个，并做一次本页的规则检验。</p><ul class="rule-list"><li><b>如果旧词会写、陌生词不行：</b>纸笔习要改为规则卡 + 陌生词读写；汗做 Main/Basic，不刷 Practice。</li><li><b>如果陌生词能读写、旧词仍错：</b>规律已会，继续按次日/第3天/第7天默写，不增加新规则。</li><li><b>如果多音节、词组空格常错：</b>每题默写前先口头“拍音节 / 说词块”，不要直接整词硬写。</li></ul>`;
   $('soundCardContent').innerHTML=SOUNDS.map(s=>`<div class="sound"><small><b>${s[0]}</b></small><b>${s[1]}</b> <em>${s[2]}</em><small>例词：${s[3]}<br>${s[4]}</small></div>`).join('');
